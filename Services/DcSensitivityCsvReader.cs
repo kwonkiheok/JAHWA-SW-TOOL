@@ -1,0 +1,191 @@
+using System.Data;
+using Microsoft.VisualBasic.FileIO;
+
+namespace JahwaInspector.Light.Services;
+
+public sealed class DcSensitivityReadResult
+{
+    public int HeaderRow { get; init; }
+    public string InputColumn { get; init; } = "";
+    public string OutputColumn { get; init; } = "";
+    public IReadOnlyList<double> UpInput { get; init; } = Array.Empty<double>();
+    public IReadOnlyList<double> UpOutput { get; init; } = Array.Empty<double>();
+    public IReadOnlyList<double> DownInput { get; init; } = Array.Empty<double>();
+    public IReadOnlyList<double> DownOutput { get; init; } = Array.Empty<double>();
+}
+
+public static class DcSensitivityCsvReader
+{
+    public static DcSensitivityReadResult Read(
+        string csvPath,
+        IEnumerable<string> inputCandidates,
+        IEnumerable<string> outputCandidates,
+        int maxScanRows = 30)
+    {
+        var rows = ReadAllRows(csvPath);
+        if (rows.Count == 0)
+            throw new InvalidOperationException("빈 CSV 파일입니다.");
+
+        var headerRow = DetectHeaderRow(rows, inputCandidates, outputCandidates, maxScanRows);
+        if (headerRow < 0)
+            throw new InvalidOperationException("실제 헤더 행을 찾지 못했습니다.");
+
+        var header = rows[headerRow].Select(x => (x ?? string.Empty).Trim()).ToList();
+        var inputCol = FindBestMatchingColumn(header, inputCandidates);
+        var outputCol = FindBestMatchingColumn(header, outputCandidates);
+
+        if (inputCol is null)
+            throw new InvalidOperationException("Input 컬럼 매칭 실패");
+        if (outputCol is null)
+            throw new InvalidOperationException("Output 컬럼 매칭 실패");
+
+        int ix = header.FindIndex(x => string.Equals(x, inputCol, StringComparison.Ordinal));
+        int iy = header.FindIndex(x => string.Equals(x, outputCol, StringComparison.Ordinal));
+        if (ix < 0 || iy < 0)
+            throw new InvalidOperationException("매칭된 컬럼 인덱스를 찾지 못했습니다.");
+
+        var xs = new List<double>();
+        var ys = new List<double>();
+
+        for (int r = headerRow + 1; r < rows.Count; r++)
+        {
+            var row = rows[r];
+            if (ix >= row.Count || iy >= row.Count) continue;
+
+            var sx = row[ix]?.Trim();
+            var sy = row[iy]?.Trim();
+            if (!TryParseFlexibleDouble(sx, out var x)) continue;
+            if (!TryParseFlexibleDouble(sy, out var y)) continue;
+
+            xs.Add(x);
+            ys.Add(y);
+        }
+
+        if (xs.Count == 0)
+            throw new InvalidOperationException("유효한 숫자 데이터가 없습니다.");
+
+        int turnIdx = 0;
+        double maxX = xs[0];
+        for (int i = 1; i < xs.Count; i++)
+        {
+            if (xs[i] > maxX)
+            {
+                maxX = xs[i];
+                turnIdx = i;
+            }
+        }
+
+        var upInput = xs.Take(turnIdx + 1).ToList();
+        var upOutput = ys.Take(turnIdx + 1).ToList();
+        var downInput = xs.Skip(turnIdx + 1).ToList();
+        var downOutput = ys.Skip(turnIdx + 1).ToList();
+
+        return new DcSensitivityReadResult
+        {
+            HeaderRow = headerRow,
+            InputColumn = inputCol,
+            OutputColumn = outputCol,
+            UpInput = upInput,
+            UpOutput = upOutput,
+            DownInput = downInput,
+            DownOutput = downOutput,
+        };
+    }
+
+    public static DataTable BuildCombinedOutputOnlyTable(IReadOnlyList<(string FileStem, IReadOnlyList<double> UpOutput, IReadOnlyList<double> DownOutput)> items)
+    {
+        var dt = new DataTable();
+        foreach (var item in items)
+        {
+            dt.Columns.Add($"{item.FileStem}_up", typeof(double));
+            dt.Columns.Add($"{item.FileStem}_down", typeof(double));
+        }
+
+        int maxRows = items.Count == 0 ? 0 : items.Max(x => Math.Max(x.UpOutput.Count, x.DownOutput.Count));
+        for (int r = 0; r < maxRows; r++)
+        {
+            var row = dt.NewRow();
+            int c = 0;
+            foreach (var item in items)
+            {
+                row[c++] = r < item.UpOutput.Count ? item.UpOutput[r] : DBNull.Value;
+                int revDownIdx = item.DownOutput.Count - 1 - r;
+                row[c++] = (revDownIdx >= 0 && revDownIdx < item.DownOutput.Count) ? item.DownOutput[revDownIdx] : DBNull.Value;
+            }
+            dt.Rows.Add(row);
+        }
+
+        return dt;
+    }
+
+    private static List<List<string>> ReadAllRows(string csvPath)
+    {
+        var rows = new List<List<string>>();
+        using var parser = new TextFieldParser(csvPath);
+        parser.TextFieldType = FieldType.Delimited;
+        parser.SetDelimiters(",");
+        parser.HasFieldsEnclosedInQuotes = true;
+        parser.TrimWhiteSpace = false;
+
+        while (!parser.EndOfData)
+        {
+            var fields = parser.ReadFields() ?? Array.Empty<string>();
+            rows.Add(fields.ToList());
+        }
+
+        return rows;
+    }
+
+    private static int DetectHeaderRow(List<List<string>> rows, IEnumerable<string> inputCandidates, IEnumerable<string> outputCandidates, int maxScanRows)
+    {
+        var inputNorm = inputCandidates.Select(NormalizeName).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        var outputNorm = outputCandidates.Select(NormalizeName).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+
+        for (int rowIdx = 0; rowIdx < Math.Min(maxScanRows, rows.Count); rowIdx++)
+        {
+            var values = rows[rowIdx]
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(NormalizeName)
+                .ToList();
+
+            bool hasInput = inputNorm.Any(candidate => values.Any(cell => cell == candidate));
+            bool hasOutput = outputNorm.Any(candidate => values.Any(cell => cell == candidate));
+
+            if (hasInput && hasOutput)
+                return rowIdx;
+        }
+
+        return -1;
+    }
+
+    private static string? FindBestMatchingColumn(IEnumerable<string> columns, IEnumerable<string> candidates)
+    {
+        var map = columns.ToDictionary(NormalizeName, x => x, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var candidate in candidates)
+        {
+            var key = NormalizeName(candidate);
+            if (map.TryGetValue(key, out var actual))
+                return actual;
+        }
+
+        return null;
+    }
+
+    private static string NormalizeName(string? name)
+    {
+        var s = (name ?? string.Empty).Trim().ToLowerInvariant();
+        foreach (var ch in new[] { " ", "_", "[", "]", "(", ")", "-", "/" })
+            s = s.Replace(ch, string.Empty);
+        return s;
+    }
+
+    private static bool TryParseFlexibleDouble(string? s, out double value)
+    {
+        if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out value))
+            return true;
+        if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out value))
+            return true;
+        return false;
+    }
+}

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <!-- FolderBrowserDialog 등 WinForms 컴포넌트 사용 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\jahwa_header.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ScottPlot 5 WPF control for Bode plot rendering (log-x appearance via log-transformed data + custom ticks) -->
+    <PackageReference Include="ScottPlot.WPF" Version="5.1.57" />
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+  </ItemGroup>
+</Project>
