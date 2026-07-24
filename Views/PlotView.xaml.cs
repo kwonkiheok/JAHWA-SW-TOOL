@@ -158,6 +158,14 @@ public partial class PlotView : System.Windows.Controls.UserControl
             _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
             RefreshScanPlot();
         }
+        else if (_vm.IsTiltInspection)
+        {
+            _fraMinLogX = null;
+            _fraMaxLogX = null;
+            ClearSelectedFraHoverCache();
+            _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            RefreshTiltPlot();
+        }
         else
             RefreshFraPlot();
 
@@ -369,6 +377,94 @@ public partial class PlotView : System.Windows.Controls.UserControl
             if (item.ScanDownInput.Count > 0)
             {
                 var down = plt.Add.Scatter(item.ScanDownInput.ToArray(), item.ScanDownOutput.ToArray());
+                down.Color = Colors.Blue.WithOpacity(alpha);
+                down.LineWidth = (float)lineWidth;
+                down.MarkerSize = markerSize;
+                if (idx == 0) down.LegendText = "Down";
+            }
+
+            idx++;
+        }
+
+        plt.Legend.IsVisible = true;
+    }
+
+    // TILT는 Target-vs-Output 곡선이 아니라 Tx(X축)-Ty(Y축) 평면의 4분면 산점도다.
+    // 원점 대칭 범위로 축을 잡아 항상 4분면이 보이게 하고, Spec 반경을 점선 원으로 표시한다.
+    private void RefreshTiltPlot()
+    {
+        if (_wpfPlot is null || _vm is null) return;
+
+        var plt = _wpfPlot.Plot;
+        plt.FigureBackground.Color = Colors.White;
+        plt.DataBackground.Color = Colors.White;
+        plt.Grid.MajorLineColor = Colors.Black.WithOpacity(.15);
+        plt.Grid.MinorLineColor = Colors.Black.WithOpacity(.05);
+        plt.XLabel("Tx");
+        plt.YLabel("Ty");
+        plt.Axes.Right.IsVisible = false;
+
+        var active = _vm.ActivePlotFile;
+        var selected = _vm.SelectedPlotFile;
+        IEnumerable<PlotFileItem> items = active is null
+            ? _vm.PlotFilesFiltered.Where(x => x.IsTilt)
+            : new PlotFileItem[] { active };
+        items = items.ToList();
+
+        var allTx = items.SelectMany(x => x.TiltUpTx.Concat(x.TiltDownTx)).ToList();
+        var allTy = items.SelectMany(x => x.TiltUpTy.Concat(x.TiltDownTy)).ToList();
+        if (allTx.Count == 0 || allTy.Count == 0)
+            return;
+
+        double specTilt = ParseLiveDouble(_vm.TiltSpec.SpecTilt) ?? 0;
+        double maxAbs = allTx.Concat(allTy).Select(Math.Abs).DefaultIfEmpty(1).Max();
+        maxAbs = Math.Max(maxAbs, Math.Abs(specTilt));
+        if (maxAbs <= 0 || double.IsNaN(maxAbs) || double.IsInfinity(maxAbs))
+            maxAbs = 1;
+        maxAbs *= 1.15;
+
+        plt.Axes.SetLimits(-maxAbs, maxAbs, -maxAbs, maxAbs);
+        plt.Axes.Bottom.TickGenerator = new NumericAutomatic();
+        plt.Axes.Left.TickGenerator = new NumericAutomatic();
+
+        var h0 = plt.Add.HorizontalLine(0);
+        h0.Color = Colors.Gray.WithOpacity(0.6);
+        h0.LineWidth = 1;
+
+        var v0 = plt.Add.VerticalLine(0);
+        v0.Color = Colors.Gray.WithOpacity(0.6);
+        v0.LineWidth = 1;
+
+        if (specTilt > 0)
+        {
+            var circle = plt.Add.Circle(0, 0, specTilt);
+            circle.LineColor = Colors.IndianRed.WithOpacity(0.7);
+            circle.LineWidth = 1.3f;
+            circle.LinePattern = LinePattern.Dashed;
+            circle.FillColor = Colors.Transparent;
+        }
+
+        int idx = 0;
+        foreach (var item in items)
+        {
+            bool isSelected = ReferenceEquals(item, active) || active is null;
+            bool hasActive = active is not null;
+            double lineWidth = isSelected ? 1.25 : 0.75;
+            double alpha = hasActive ? (isSelected ? 0.98 : 0.16) : 0.55;
+            float markerSize = selected is null ? 0 : 2.4f;
+
+            if (item.TiltUpTx.Count > 0)
+            {
+                var up = plt.Add.Scatter(item.TiltUpTx.ToArray(), item.TiltUpTy.ToArray());
+                up.Color = Colors.Orange.WithOpacity(alpha);
+                up.LineWidth = (float)lineWidth;
+                up.MarkerSize = markerSize;
+                if (idx == 0) up.LegendText = "Up";
+            }
+
+            if (item.TiltDownTx.Count > 0)
+            {
+                var down = plt.Add.Scatter(item.TiltDownTx.ToArray(), item.TiltDownTy.ToArray());
                 down.Color = Colors.Blue.WithOpacity(alpha);
                 down.LineWidth = (float)lineWidth;
                 down.MarkerSize = markerSize;

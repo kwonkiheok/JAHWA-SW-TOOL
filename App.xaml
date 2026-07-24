@@ -514,6 +514,68 @@
             </StackPanel>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:TiltSpecViewModel}">
+            <StackPanel>
+                <TextBlock Text="TILT" FontSize="13" FontWeight="SemiBold"/>
+
+                <TextBlock Text="Data Type" Foreground="{StaticResource SubTextBrush}" Margin="2,10,0,6"/>
+                <ComboBox ItemsSource="{Binding DataTypeOptions}" SelectedItem="{Binding SelectedDataType}"/>
+
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10"
+                        Padding="10" Margin="0,10,0,0" Background="#FAFAFB">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Rule" Foreground="{StaticResource SubTextBrush}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConfiguredHeaderDescription}" TextWrapping="Wrap"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Input" Foreground="{StaticResource SubTextBrush}" Margin="0,7,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConfiguredInputHeader}" Margin="0,7,0,0" TextWrapping="Wrap"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Output" Foreground="{StaticResource SubTextBrush}" Margin="0,7,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConfiguredOutputHeader}" Margin="0,7,0,0" TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
+
+                <TextBlock Text="Spec Tilt (abs max)" Foreground="{StaticResource SubTextBrush}" Margin="2,10,0,6"/>
+                <TextBox Text="{Binding SpecTilt, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <CheckBox Content="파일별 TILT plot PNG 저장" IsChecked="{Binding SavePlotImage}" Margin="0,10,0,0" Foreground="{StaticResource SubTextBrush}"/>
+                <CheckBox Content="Summary Excel 저장 (한 시트에 plot 모으기)" IsChecked="{Binding SaveSummaryExcel}" Margin="0,6,0,0" Foreground="{StaticResource SubTextBrush}"/>
+
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10"
+                        Padding="10" Margin="0,12,0,0" Background="#FAFAFB">
+                    <StackPanel>
+                        <TextBlock Text="최근 처리 결과" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding LastPeakUp, StringFormat=Peak Up: {0}}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,6,0,0" Text="{Binding LastPeakDown, StringFormat=Peak Down: {0}}"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,6,0,0" Text="{Binding LastJudge, StringFormat=Judge: {0}}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding LastReason, StringFormat=Reason: {0}}" Foreground="{StaticResource SubTextBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding SourceFile}" Foreground="{StaticResource SubTextBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding LastSummary}" Foreground="{StaticResource SubTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:SettlingSpecViewModel}">
             <StackPanel>
                 <TextBlock Text="SETTLING TIME" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>

@@ -298,6 +298,37 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
 
+                                <DataGrid ItemsSource="{Binding TiltResults}"
+                                          SelectedItem="{Binding SelectedTiltRow}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          Margin="12">
+                                    <DataGrid.Style>
+                                        <Style TargetType="DataGrid">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsTableTab}" Value="True"/>
+                                                        <Condition Binding="{Binding IsTiltInspection}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.Style>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="2*"/>
+                                        <DataGridTextColumn Header="Judge" Binding="{Binding Judge}" Width="*"/>
+                                        <DataGridTextColumn Header="Reason" Binding="{Binding JudgeReason}" Width="2*"/>
+                                        <DataGridTextColumn Header="Up Count" Binding="{Binding UpCount}" Width="*"/>
+                                        <DataGridTextColumn Header="Down Count" Binding="{Binding DownCount}" Width="*"/>
+                                        <DataGridTextColumn Header="Peak Up" Binding="{Binding PeakTiltUp, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="Peak Down" Binding="{Binding PeakTiltDown, StringFormat={}{0:F3}}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
                                 <DataGrid ItemsSource="{Binding SettlingResults}"
                                           SelectedItem="{Binding SelectedSettlingRow}"
                                           AutoGenerateColumns="False"
