@@ -125,6 +125,20 @@ public sealed class MainViewModel : ViewModelBase
         if (ScanSpec.SourceFile != row.FileName) ScanSpec.SourceFile = row.FileName;
     }
 
+    private void UpdateRecentFromTiltRow(TiltResultRow? row)
+    {
+        if (row is null) return;
+
+        string peakUp = row.PeakTiltUp?.ToString("0.###") ?? "N/A";
+        string peakDown = row.PeakTiltDown?.ToString("0.###") ?? "N/A";
+
+        if (TiltSpec.LastPeakUp != peakUp) TiltSpec.LastPeakUp = peakUp;
+        if (TiltSpec.LastPeakDown != peakDown) TiltSpec.LastPeakDown = peakDown;
+        if (TiltSpec.LastJudge != (string.IsNullOrWhiteSpace(row.Judge) ? "-" : row.Judge)) TiltSpec.LastJudge = string.IsNullOrWhiteSpace(row.Judge) ? "-" : row.Judge;
+        if (TiltSpec.LastReason != (string.IsNullOrWhiteSpace(row.JudgeReason) ? "-" : row.JudgeReason)) TiltSpec.LastReason = string.IsNullOrWhiteSpace(row.JudgeReason) ? "-" : row.JudgeReason;
+        if (TiltSpec.SourceFile != row.FileName) TiltSpec.SourceFile = row.FileName;
+    }
+
     private bool _isBusy;
     public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); CancelCommand.RaiseCanExecuteChanged(); } }
 
@@ -159,7 +173,7 @@ public sealed class MainViewModel : ViewModelBase
         public override string ToString() => Name;
     }
 
-    public ObservableCollection<string> InspectionOptions { get; } = new() { "FRA", "DC SENSITIVITY", "SCAN", "SETTLING TIME", "SINE WAVE" };
+    public ObservableCollection<string> InspectionOptions { get; } = new() { "FRA", "DC SENSITIVITY", "SCAN", "SETTLING TIME", "TILT", "SINE WAVE" };
     public ObservableCollection<string> FraModeOptions { get; } = new() { "OPEN LOOP", "PLANT" };
     public ObservableCollection<FraDataTypeDefinition> FraDataTypeOptions { get; } =
         new(FraDataTypeRegistry.Definitions);
@@ -244,6 +258,7 @@ public sealed class MainViewModel : ViewModelBase
     public DcSensitivitySpecViewModel DcSensitivitySpec { get; } = new();
     public ScanSpecViewModel ScanSpec { get; } = new();
     public SettlingSpecViewModel SettlingSpec { get; } = new();
+    public TiltSpecViewModel TiltSpec { get; } = new();
 
     private ViewModelBase _activeSpec;
     public ViewModelBase ActiveSpec { get => _activeSpec; private set { _activeSpec = value; OnPropertyChanged(); } }
@@ -268,6 +283,7 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsDcSensitivityInspection));
         OnPropertyChanged(nameof(IsScanInspection));
         OnPropertyChanged(nameof(IsSettlingInspection));
+        OnPropertyChanged(nameof(IsTiltInspection));
     }
 
     public string ActiveTabTitle => IsPlotTab ? "Plot" : IsTableTab ? "Table" : "Raw";
@@ -288,6 +304,11 @@ public sealed class MainViewModel : ViewModelBase
             : IsTableTab
                 ? "그룹/축별 Settling Time · Overshoot 판정 결과"
                 : "SETTLING TIME 요약 미리보기",
+        "TILT" => IsPlotTab
+            ? "파일별 Tx-Ty 4분면 플롯 (Up/Down)"
+            : IsTableTab
+                ? "파일별 Peak Tilt 판정 결과"
+                : "TILT 요약 미리보기",
         _ => IsPlotTab
             ? $"전체 FRA Bode Plot 오버레이 ({SelectedFraMode ?? "Open loop"})"
             : IsTableTab
@@ -299,6 +320,7 @@ public sealed class MainViewModel : ViewModelBase
     public bool IsDcSensitivityInspection => SelectedInspection == "DC SENSITIVITY";
     public bool IsScanInspection => SelectedInspection == "SCAN";
     public bool IsSettlingInspection => SelectedInspection == "SETTLING TIME";
+    public bool IsTiltInspection => SelectedInspection == "TILT";
 
     private bool _isEmpty = true;
     public bool IsEmpty { get => _isEmpty; set { _isEmpty = value; OnPropertyChanged(); } }
@@ -307,6 +329,7 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<DcSensitivityResultRow> DcResults { get; } = new();
     public ObservableCollection<ScanResultRow> ScanResults { get; } = new();
     public ObservableCollection<SettlingResultRow> SettlingResults { get; } = new();
+    public ObservableCollection<TiltResultRow> TiltResults { get; } = new();
 
     private FraResultRow? _selectedFraRow;
     public FraResultRow? SelectedFraRow
@@ -356,6 +379,19 @@ public sealed class MainViewModel : ViewModelBase
             OnPropertyChanged();
             if (_selectedSettlingRow is not null) UpdateRecentFromSettlingRow(_selectedSettlingRow);
             if (IsSettlingInspection) SyncSelectionToPlot();
+        }
+    }
+
+    private TiltResultRow? _selectedTiltRow;
+    public TiltResultRow? SelectedTiltRow
+    {
+        get => _selectedTiltRow;
+        set
+        {
+            _selectedTiltRow = value;
+            OnPropertyChanged();
+            if (_selectedTiltRow is not null) UpdateRecentFromTiltRow(_selectedTiltRow);
+            if (IsTiltInspection) SyncSelectionToPlot();
         }
     }
 
@@ -445,6 +481,12 @@ public sealed class MainViewModel : ViewModelBase
                 ApplyScanJudgementToAll();
         };
 
+        TiltSpec.PropertyChanged += (_, e) =>
+        {
+            if (!IsBusy && TiltResults.Count > 0 && IsTiltJudgementSpecProperty(e.PropertyName))
+                ApplyTiltJudgementToAll();
+        };
+
         SettlingSpec.PropertyChanged += (_, e) =>
         {
             if (IsBusy) return;
@@ -497,6 +539,7 @@ public sealed class MainViewModel : ViewModelBase
         DcResults.Clear();
         ScanResults.Clear();
         SettlingResults.Clear();
+        TiltResults.Clear();
         PlotFiles.Clear();
         PlotFilesFiltered.Clear();
         SelectedPlotFile = null;
@@ -504,6 +547,7 @@ public sealed class MainViewModel : ViewModelBase
         SelectedDcRow = null;
         SelectedScanRow = null;
         SelectedSettlingRow = null;
+        SelectedTiltRow = null;
         RawPreview = null;
         ExportOutputLabel = "";
         RawMergedLabel = "";
@@ -530,6 +574,9 @@ public sealed class MainViewModel : ViewModelBase
                 break;
             case "SETTLING TIME":
                 ExportSettlingBatch();
+                break;
+            case "TILT":
+                ExportTiltBatch();
                 break;
             default:
                 ExportOutputLabel = "해당 검사 항목은 아직 구현되지 않았습니다.";
@@ -1030,6 +1077,170 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private void ExportTiltBatch()
+    {
+        var files = Directory.GetFiles(ImportedFolder, "*", SearchOption.TopDirectoryOnly);
+        Array.Sort(files, (a, b) => NaturalCompare(Path.GetFileName(a), Path.GetFileName(b)));
+
+        if (!ConfirmTiltExport(files))
+            return;
+
+        ResetResults();
+        IsBusy = true;
+        ProgressValue = 0;
+
+        try
+        {
+            var outRoot = Path.Combine(ImportedFolder, "OUTPUT");
+            Directory.CreateDirectory(outRoot);
+            var outDir = Path.Combine(outRoot, "TILT");
+            Directory.CreateDirectory(outDir);
+            var plotDir = Path.Combine(outDir, "Plots");
+            if (TiltSpec.SavePlotImage)
+                Directory.CreateDirectory(plotDir);
+
+            var dataType = TiltDataTypeRegistry.Get(TiltSpec.SelectedDataType);
+            double? specTilt = ParseSpecNumber(TiltSpec.SpecTilt);
+            var summaryPlots = new List<(string FileName, string PlotPath, int HeaderRow, string InputColumn, string OutputColumn, int UpCount, int DownCount)>();
+            var failures = new List<string>();
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                var file = files[i];
+                try
+                {
+                    var read = dataType.Read(file);
+                    var metrics = dataType.ComputeMetrics(read);
+                    string stem = Path.GetFileNameWithoutExtension(file);
+                    string plotPath = "";
+
+                    if (TiltSpec.SavePlotImage)
+                    {
+                        plotPath = Path.Combine(plotDir, $"{SanitizeFileName(stem)}_tilt.png");
+                        SaveTiltPlotPng(
+                            read.UpTiltTx,
+                            read.UpTiltTy,
+                            read.DownTiltTx,
+                            read.DownTiltTy,
+                            plotPath,
+                            stem,
+                            metrics,
+                            specTilt);
+                    }
+
+                    var row = new TiltResultRow
+                    {
+                        FileName = Path.GetFileName(file),
+                        UpCount = read.UpTiltTx.Count,
+                        DownCount = read.DownTiltTx.Count,
+                        PeakTiltUp = Math.Round(metrics.PeakTiltUp, 3),
+                        PeakTiltDown = Math.Round(metrics.PeakTiltDown, 3),
+                        PeakTilt = Math.Round(metrics.PeakTilt, 3),
+                        PlotPath = plotPath,
+                    };
+
+                    TiltResults.Add(row);
+                    var tiltUpPairs = read.UpTiltTx.Zip(read.UpTiltTy, (tx, ty) => (tx, ty)).ToList();
+                    var tiltDownPairs = read.DownTiltTx.Zip(read.DownTiltTy, (tx, ty) => (tx, ty)).ToList();
+                    PlotFiles.Add(new PlotFileItem(
+                        row.FileName,
+                        file,
+                        tiltUpPairs,
+                        tiltDownPairs));
+
+                    if (!string.IsNullOrWhiteSpace(plotPath))
+                    {
+                        summaryPlots.Add((
+                            row.FileName,
+                            plotPath,
+                            0,
+                            "TiltTx",
+                            "TiltTy",
+                            row.UpCount,
+                            row.DownCount));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{Path.GetFileName(file)}: {ex.Message}");
+                }
+
+                ProgressValue = (i + 1) * 75.0 / Math.Max(1, files.Length);
+            }
+
+            RefreshPlotFilter();
+            ApplyTiltJudgementToAll();
+
+            var summaryPath = Path.Combine(outDir, "TILT_Summary.csv");
+            using (var sw = new StreamWriter(summaryPath, false, new UTF8Encoding(true)))
+            {
+                sw.WriteLine("FileName,Judge,Reason,UpCount,DownCount,PeakTiltUp,PeakTiltDown,PeakTilt");
+                foreach (var r in TiltResults)
+                {
+                    sw.WriteLine(string.Join(",",
+                        Esc(r.FileName),
+                        Esc(r.Judge),
+                        Esc(r.JudgeReason),
+                        r.UpCount.ToString(CultureInfo.InvariantCulture),
+                        r.DownCount.ToString(CultureInfo.InvariantCulture),
+                        r.PeakTiltUp?.ToString("0.###", CultureInfo.InvariantCulture) ?? "",
+                        r.PeakTiltDown?.ToString("0.###", CultureInfo.InvariantCulture) ?? "",
+                        r.PeakTilt?.ToString("0.###", CultureInfo.InvariantCulture) ?? ""));
+                }
+            }
+
+            var tiltDt = BuildTiltSummaryTable(TiltResults);
+            RawPreview = TakePreview(tiltDt, 30).DefaultView;
+            RawMergedLabel = $"TILT 요약 CSV 저장: {summaryPath}";
+
+            string? summaryExcelPath = null;
+            if (TiltSpec.SaveSummaryExcel && summaryPlots.Count > 0)
+            {
+                summaryExcelPath = Path.Combine(outDir, "TILT_Summary.xlsx");
+                SaveScanSummaryExcel(summaryExcelPath, summaryPlots, BuildTiltMetadata(files.Length, dataType));
+            }
+
+            SelectedTiltRow = TiltResults.FirstOrDefault();
+            IsEmpty = false;
+            IsPlotTab = true;
+            ProgressValue = 100;
+
+            var summary = new StringBuilder();
+            summary.AppendLine($"Output folder: {outDir}");
+            summary.AppendLine("- TILT_Summary.csv");
+            if (TiltSpec.SavePlotImage)
+                summary.AppendLine($"- Plot PNGs: {plotDir}");
+            if (TiltSpec.SaveSummaryExcel && !string.IsNullOrWhiteSpace(summaryExcelPath))
+                summary.AppendLine("- TILT_Summary.xlsx");
+            if (failures.Count > 0)
+                summary.AppendLine($"- 실패 {failures.Count}건 (아래 로그 확인)");
+
+            ExportOutputLabel = summary.ToString().TrimEnd();
+            TiltSpec.LastSummary = $"Success {TiltResults.Count} / Failed {failures.Count}";
+            if (failures.Count > 0)
+            {
+                var errorLogPath = Path.Combine(outDir, "TILT_ErrorLog.txt");
+                SaveTiltFailureLog(errorLogPath, failures, files.Length);
+                RawMergedLabel += Environment.NewLine + $"Error log saved: {errorLogPath}";
+                ShowTiltFailureMessage(failures);
+            }
+        }
+        catch (Exception ex)
+        {
+            ExportOutputLabel = "Error: " + ex.Message;
+            System.Windows.MessageBox.Show(
+                ex.Message,
+                "TILT 처리 오류",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+            CancelCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     // 그룹(동일 스텝 조건)별로 계산된 지표 + 원본 시계열. 표/CSV/PNG/Excel 생성에 공용으로 쓰인다.
     private sealed record SettlingGroupPlotData(
         string GroupLabel,
@@ -1350,6 +1561,25 @@ public sealed class MainViewModel : ViewModelBase
             System.Windows.MessageBoxImage.Information) == System.Windows.MessageBoxResult.OK;
     }
 
+    private bool ConfirmTiltExport(IReadOnlyList<string> files)
+    {
+        string outputPath = HasImportedFolder
+            ? Path.Combine(ImportedFolder, "OUTPUT", "TILT")
+            : "";
+
+        string message =
+            $"TILT Export를 시작할까요?{Environment.NewLine}{Environment.NewLine}" +
+            $"Data Type: {TiltSpec.SelectedDataType}{Environment.NewLine}" +
+            $"Target files: {files.Count}{Environment.NewLine}" +
+            $"Output: {outputPath}";
+
+        return System.Windows.MessageBox.Show(
+            message,
+            "TILT Export 확인",
+            System.Windows.MessageBoxButton.OKCancel,
+            System.Windows.MessageBoxImage.Information) == System.Windows.MessageBoxResult.OK;
+    }
+
     private List<ScanRangeDefinition> ResolveScanRanges(
         ScanReadResult read,
         IReadOnlyList<ScanRangeDefinition> configuredRanges,
@@ -1414,6 +1644,49 @@ public sealed class MainViewModel : ViewModelBase
         System.Windows.MessageBox.Show(
             preview + tail,
             "SCAN 파일 처리 오류",
+            System.Windows.MessageBoxButton.OK,
+            System.Windows.MessageBoxImage.Error);
+    }
+
+    private IReadOnlyList<(string Name, string Value)> BuildTiltMetadata(
+        int targetFileCount,
+        ITiltDataTypeHandler dataType)
+    {
+        return new List<(string Name, string Value)>
+        {
+            ("App Version", GetAppVersion()),
+            ("Inspection", "TILT"),
+            ("Data Type", dataType.Name),
+            ("Input Header", dataType.InputHeaderDisplay),
+            ("Output Header", dataType.OutputHeaderDisplay),
+            ("Target Files", targetFileCount.ToString(CultureInfo.InvariantCulture)),
+            ("Metric Rule", dataType.MetricRuleDescription),
+            ("Spec Tilt (abs max)", TiltSpec.SpecTilt),
+            ("Created At", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)),
+        };
+    }
+
+    private void SaveTiltFailureLog(string path, IReadOnlyList<string> failures, int targetFileCount)
+    {
+        using var sw = new StreamWriter(path, false, new UTF8Encoding(true));
+        sw.WriteLine("TILT Error Log");
+        sw.WriteLine($"App Version: {GetAppVersion()}");
+        sw.WriteLine($"Data Type: {TiltSpec.SelectedDataType}");
+        sw.WriteLine($"Target Files: {targetFileCount}");
+        sw.WriteLine($"Success: {TiltResults.Count}");
+        sw.WriteLine($"Failed: {failures.Count}");
+        sw.WriteLine();
+        foreach (var failure in failures)
+            sw.WriteLine(failure);
+    }
+
+    private static void ShowTiltFailureMessage(IReadOnlyList<string> failures)
+    {
+        var preview = string.Join(Environment.NewLine, failures.Take(20));
+        var tail = failures.Count > 20 ? $"{Environment.NewLine}..." : "";
+        System.Windows.MessageBox.Show(
+            preview + tail,
+            "TILT 파일 처리 오류",
             System.Windows.MessageBoxButton.OK,
             System.Windows.MessageBoxImage.Error);
     }
@@ -1712,6 +1985,74 @@ public sealed class MainViewModel : ViewModelBase
         return reasons.Count == 0 ? ("PASS", "") : ("NG", string.Join(", ", reasons));
     }
 
+    private void ApplyTiltJudgementToAll()
+    {
+        var map = new Dictionary<string, (string Judge, string Reason)>(StringComparer.OrdinalIgnoreCase);
+
+        for (int i = 0; i < TiltResults.Count; i++)
+        {
+            var row = TiltResults[i];
+            var (judge, reason) = JudgeTiltBySpec(row);
+            map[row.FileName] = (judge, reason);
+
+            if (row.Judge == judge && row.JudgeReason == reason)
+                continue;
+
+            TiltResults[i] = new TiltResultRow
+            {
+                FileName = row.FileName,
+                UpCount = row.UpCount,
+                DownCount = row.DownCount,
+                PeakTiltUp = row.PeakTiltUp,
+                PeakTiltDown = row.PeakTiltDown,
+                PeakTilt = row.PeakTilt,
+                Judge = judge,
+                JudgeReason = reason,
+                PlotPath = row.PlotPath
+            };
+        }
+
+        foreach (var pf in PlotFiles)
+        {
+            if (map.TryGetValue(pf.FileName, out var v))
+            {
+                pf.Judge = v.Judge;
+                pf.JudgeReason = v.Reason;
+            }
+            else
+            {
+                pf.Judge = "";
+                pf.JudgeReason = "";
+            }
+        }
+
+        if (SelectedTiltRow is not null)
+        {
+            var selected = TiltResults.FirstOrDefault(x => x.FileName == SelectedTiltRow.FileName);
+            if (selected is not null)
+                SelectedTiltRow = selected;
+        }
+
+        RefreshPlotFilter();
+    }
+
+    private (string judge, string reason) JudgeTiltBySpec(TiltResultRow row)
+    {
+        var reasons = new List<string>();
+        double? specTilt = ParseSpecNumber(TiltSpec.SpecTilt);
+
+        if (specTilt is double tiltSpec)
+        {
+            if (row.PeakTiltUp is double peakUp && Math.Abs(peakUp) > Math.Abs(tiltSpec))
+                reasons.Add($"|PeakUp|>{Math.Abs(tiltSpec):0.###}");
+
+            if (row.PeakTiltDown is double peakDown && Math.Abs(peakDown) > Math.Abs(tiltSpec))
+                reasons.Add($"|PeakDown|>{Math.Abs(tiltSpec):0.###}");
+        }
+
+        return reasons.Count == 0 ? ("PASS", "") : ("NG", string.Join(", ", reasons));
+    }
+
     private void RecalculateFraResultsFromCurrentPlotData()
     {
         if (PlotFiles.Count == 0)
@@ -1761,6 +2102,7 @@ public sealed class MainViewModel : ViewModelBase
             "DC SENSITIVITY" => DcSensitivitySpec,
             "SCAN" => ScanSpec,
             "SETTLING TIME" => SettlingSpec,
+            "TILT" => TiltSpec,
             _ => EmptySpec
         };
     }
@@ -1792,6 +2134,7 @@ public sealed class MainViewModel : ViewModelBase
             "DC SENSITIVITY" => SelectedDcRow?.FileName,
             "SCAN" => SelectedScanRow?.FileName,
             "SETTLING TIME" => SelectedSettlingRow?.FileName,
+            "TILT" => SelectedTiltRow?.FileName,
             _ => SelectedFraRow?.FileName,
         };
         if (string.IsNullOrWhiteSpace(target)) return;
@@ -1822,6 +2165,12 @@ public sealed class MainViewModel : ViewModelBase
             var settling = SettlingResults.FirstOrDefault(r => r.FileName == SelectedPlotFile.FileName);
             if (settling is not null && !ReferenceEquals(settling, SelectedSettlingRow))
                 SelectedSettlingRow = settling;
+        }
+        else if (IsTiltInspection)
+        {
+            var tilt = TiltResults.FirstOrDefault(r => r.FileName == SelectedPlotFile.FileName);
+            if (tilt is not null && !ReferenceEquals(tilt, SelectedTiltRow))
+                SelectedTiltRow = tilt;
         }
         else
         {
@@ -1901,6 +2250,9 @@ public sealed class MainViewModel : ViewModelBase
         => propertyName is nameof(ScanSpecViewModel.SpecHys1)
             or nameof(ScanSpecViewModel.SpecLi1);
 
+    private static bool IsTiltJudgementSpecProperty(string? propertyName)
+        => propertyName is nameof(TiltSpecViewModel.SpecTilt);
+
     private static DataTable TakePreview(DataTable source, int rows)
     {
         var preview = source.Clone();
@@ -1944,6 +2296,35 @@ public sealed class MainViewModel : ViewModelBase
             row["Range2"] = r.Range2;
             row["Hys2"] = r.Hys2 is null ? DBNull.Value : r.Hys2.Value;
             row["LI2"] = r.Li2 is null ? DBNull.Value : r.Li2.Value;
+            dt.Rows.Add(row);
+        }
+
+        return dt;
+    }
+
+    private static DataTable BuildTiltSummaryTable(IEnumerable<TiltResultRow> rows)
+    {
+        var dt = new DataTable();
+        dt.Columns.Add("FileName", typeof(string));
+        dt.Columns.Add("Judge", typeof(string));
+        dt.Columns.Add("Reason", typeof(string));
+        dt.Columns.Add("UpCount", typeof(int));
+        dt.Columns.Add("DownCount", typeof(int));
+        dt.Columns.Add("PeakTiltUp", typeof(double));
+        dt.Columns.Add("PeakTiltDown", typeof(double));
+        dt.Columns.Add("PeakTilt", typeof(double));
+
+        foreach (var r in rows)
+        {
+            var row = dt.NewRow();
+            row["FileName"] = r.FileName;
+            row["Judge"] = r.Judge;
+            row["Reason"] = r.JudgeReason;
+            row["UpCount"] = r.UpCount;
+            row["DownCount"] = r.DownCount;
+            row["PeakTiltUp"] = r.PeakTiltUp is null ? DBNull.Value : r.PeakTiltUp.Value;
+            row["PeakTiltDown"] = r.PeakTiltDown is null ? DBNull.Value : r.PeakTiltDown.Value;
+            row["PeakTilt"] = r.PeakTilt is null ? DBNull.Value : r.PeakTilt.Value;
             dt.Rows.Add(row);
         }
 
@@ -2198,6 +2579,131 @@ public sealed class MainViewModel : ViewModelBase
                 $"{FormatRange(m.MinInput, m.MaxInput)}  Hys={m.Hys:0.###}, LI={m.Linearity:0.###}"));
             g.DrawString(info, labelFont, subTextBrush, plotRect.Left + 4, infoY);
         }
+
+        bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+    }
+
+    // TILT는 Target-vs-Output 곡선이 아니라 Tx(X축)-Ty(Y축) 평면의 4분면 산점도로 그린다.
+    // 원점을 중심으로 대칭 범위를 잡아 사분면이 항상 보이게 하고, Spec 반경을 점선 원으로 참조 표시한다.
+    private static void SaveTiltPlotPng(
+        IReadOnlyList<double> upTx,
+        IReadOnlyList<double> upTy,
+        IReadOnlyList<double> downTx,
+        IReadOnlyList<double> downTy,
+        string path,
+        string title,
+        TiltMetricsResult metrics,
+        double? specTilt)
+    {
+        using var bmp = new System.Drawing.Bitmap(1100, 1000);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        g.Clear(System.Drawing.Color.White);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        const int plotMargin = 100;
+        int plotSize = Math.Min(bmp.Width, bmp.Height) - (plotMargin * 2);
+        var plotRect = new System.Drawing.Rectangle(
+            (bmp.Width - plotSize) / 2,
+            plotMargin,
+            plotSize,
+            plotSize);
+
+        using var axisPen = new System.Drawing.Pen(System.Drawing.Color.Black, 1.1f);
+        using var gridPen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(232, 232, 232), 1f);
+        using var crosshairPen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(160, 160, 160), 1f);
+        using var specPen = new System.Drawing.Pen(System.Drawing.Color.IndianRed, 1.3f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash };
+        using var upPen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(232, 138, 33), 1.1f);
+        using var downPen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(42, 127, 239), 1.1f);
+        using var titleFont = new System.Drawing.Font("Segoe UI", 18, System.Drawing.FontStyle.Bold);
+        using var labelFont = new System.Drawing.Font("Segoe UI", 11);
+        using var legendFont = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold);
+        using var textBrush = new System.Drawing.SolidBrush(System.Drawing.Color.Black);
+        using var subTextBrush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(70, 70, 70));
+
+        var allTx = upTx.Concat(downTx).ToList();
+        var allTy = upTy.Concat(downTy).ToList();
+        if (allTx.Count == 0 || allTy.Count == 0)
+        {
+            bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            return;
+        }
+
+        double maxAbs = allTx.Concat(allTy).Select(Math.Abs).DefaultIfEmpty(1).Max();
+        if (specTilt is double specForRange)
+            maxAbs = Math.Max(maxAbs, Math.Abs(specForRange));
+        if (maxAbs <= 0 || double.IsNaN(maxAbs) || double.IsInfinity(maxAbs))
+            maxAbs = 1;
+        maxAbs *= 1.15;
+
+        double minX = -maxAbs, maxX = maxAbs, minY = -maxAbs, maxY = maxAbs;
+        var ticks = BuildTicksWithinRange(minX, maxX, 6);
+
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            var titleText = title.Trim();
+            var titleSize = g.MeasureString(titleText, titleFont);
+            float titleX = plotRect.Left + (plotRect.Width - titleSize.Width) / 2f;
+            g.DrawString(titleText, titleFont, textBrush, titleX, 18);
+        }
+
+        foreach (var t in ticks)
+        {
+            float y = MapY(t, minY, maxY, plotRect);
+            g.DrawLine(gridPen, plotRect.Left, y, plotRect.Right, y);
+            float x = MapX(t, minX, maxX, plotRect);
+            g.DrawLine(gridPen, x, plotRect.Top, x, plotRect.Bottom);
+
+            var label = FormatTick(t);
+            var sizeY = g.MeasureString(label, labelFont);
+            g.DrawString(label, labelFont, textBrush, plotRect.Left - sizeY.Width - 12, y - sizeY.Height / 2);
+            var sizeX = g.MeasureString(label, labelFont);
+            g.DrawString(label, labelFont, textBrush, x - sizeX.Width / 2, plotRect.Bottom + 10);
+        }
+
+        g.DrawRectangle(axisPen, plotRect);
+
+        float originX = MapX(0, minX, maxX, plotRect);
+        float originY = MapY(0, minY, maxY, plotRect);
+        g.DrawLine(crosshairPen, plotRect.Left, originY, plotRect.Right, originY);
+        g.DrawLine(crosshairPen, originX, plotRect.Top, originX, plotRect.Bottom);
+
+        if (specTilt is double specRadius && specRadius > 0)
+        {
+            float rx = MapX(specRadius, minX, maxX, plotRect) - originX;
+            float ry = originY - MapY(specRadius, minY, maxY, plotRect);
+            g.DrawEllipse(specPen, originX - rx, originY - ry, rx * 2, ry * 2);
+        }
+
+        DrawSeries(g, upPen, upTx, upTy, plotRect, minX, maxX, minY, maxY, drawMarkers: true);
+        DrawSeries(g, downPen, downTx, downTy, plotRect, minX, maxX, minY, maxY, drawMarkers: true);
+
+        const string xLabel = "Tx";
+        const string yLabel = "Ty";
+        var xSize = g.MeasureString(xLabel, labelFont);
+        g.DrawString(xLabel, labelFont, textBrush, plotRect.Left + plotRect.Width / 2f - xSize.Width / 2f, plotRect.Bottom + 40);
+
+        g.TranslateTransform(30, plotRect.Top + plotRect.Height / 2f);
+        g.RotateTransform(-90);
+        var ySize = g.MeasureString(yLabel, labelFont);
+        g.DrawString(yLabel, labelFont, textBrush, -ySize.Width / 2f, 0);
+        g.ResetTransform();
+
+        float lx = plotRect.Right - 210;
+        float ly = plotRect.Top + 15;
+        g.DrawLine(upPen, lx, ly + 8, lx + 28, ly + 8);
+        g.DrawString("Up", legendFont, textBrush, lx + 36, ly);
+        g.DrawLine(downPen, lx, ly + 34, lx + 28, ly + 34);
+        g.DrawString("Down", legendFont, textBrush, lx + 36, ly + 26);
+        if (specTilt is not null)
+        {
+            g.DrawLine(specPen, lx, ly + 60, lx + 28, ly + 60);
+            g.DrawString("Spec", legendFont, textBrush, lx + 36, ly + 52);
+        }
+
+        float infoY = plotRect.Top + plotRect.Height - 24;
+        string specText = specTilt is double sv ? sv.ToString("0.###") : "-";
+        string info = $"PeakUp={metrics.PeakTiltUp:0.###}  PeakDown={metrics.PeakTiltDown:0.###}  Spec={specText}";
+        g.DrawString(info, labelFont, subTextBrush, plotRect.Left + 4, infoY);
 
         bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
     }
