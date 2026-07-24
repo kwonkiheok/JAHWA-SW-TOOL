@@ -146,6 +146,9 @@ public static class RobocubeScanReader
         if (line.Contains('\t'))
             return line.Split('\t').Select(x => x.Trim()).ToList();
 
+        if (line.Contains(','))
+            return line.Split(',').Select(x => x.Trim()).ToList();
+
         return line
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
