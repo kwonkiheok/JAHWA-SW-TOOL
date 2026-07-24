@@ -12,8 +12,8 @@ public static class RobocubeScanReader
         if (lines.Length == 0)
             throw new InvalidOperationException("Empty robocube file.");
 
-        int upHeader = FindSectionHeader(lines, "(Up)");
-        int downHeader = FindSectionHeader(lines, "(Down)");
+        int upHeader = FindSectionHeader(lines, "(Up)", "Target", "LaserDis");
+        int downHeader = FindSectionHeader(lines, "(Down)", "Target", "LaserDis");
         if (upHeader < 0 || downHeader < 0)
             throw new InvalidOperationException("robocube Up/Down sections were not found.");
 
@@ -45,14 +45,13 @@ public static class RobocubeScanReader
         };
     }
 
-    private static int FindSectionHeader(IReadOnlyList<string> lines, string marker)
+    internal static int FindSectionHeader(IReadOnlyList<string> lines, string marker, params string[] requiredColumns)
     {
         for (int i = 0; i < lines.Count; i++)
         {
             var cells = Split(lines[i]);
             if (cells.Any(x => string.Equals(x.Trim(), marker, StringComparison.OrdinalIgnoreCase))
-                && FindColumn(cells, "Target") >= 0
-                && FindColumn(cells, "LaserDis") >= 0)
+                && requiredColumns.All(col => FindColumn(cells, col) >= 0))
             {
                 return i;
             }
@@ -61,7 +60,7 @@ public static class RobocubeScanReader
         return -1;
     }
 
-    private static (List<double> input, List<double> output) ReadSection(
+    internal static (List<double> input, List<double> output) ReadSection(
         IReadOnlyList<string> lines,
         int start,
         int end,
@@ -95,7 +94,7 @@ public static class RobocubeScanReader
         return (input, output);
     }
 
-    private static IReadOnlyList<ScanRangeHint> ReadRangeHints(IReadOnlyList<string> lines)
+    internal static IReadOnlyList<ScanRangeHint> ReadRangeHints(IReadOnlyList<string> lines)
     {
         double? hysStart = null;
         double? hysEnd = null;
@@ -129,7 +128,7 @@ public static class RobocubeScanReader
         return TryParseDouble(tail, out value);
     }
 
-    private static int FindColumn(IReadOnlyList<string> cells, string name)
+    internal static int FindColumn(IReadOnlyList<string> cells, string name)
     {
         string target = Normalize(name);
         for (int i = 0; i < cells.Count; i++)
@@ -141,7 +140,7 @@ public static class RobocubeScanReader
         return -1;
     }
 
-    private static List<string> Split(string line)
+    internal static List<string> Split(string line)
     {
         if (line.Contains('\t'))
             return line.Split('\t').Select(x => x.Trim()).ToList();
@@ -157,7 +156,7 @@ public static class RobocubeScanReader
     private static string Normalize(string value)
         => (value ?? string.Empty).Trim().ToLowerInvariant().Replace(" ", "");
 
-    private static bool TryParseDouble(string? value, out double result)
+    internal static bool TryParseDouble(string? value, out double result)
         => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
            || double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out result);
 }
