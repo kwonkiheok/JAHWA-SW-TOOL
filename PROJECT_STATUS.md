@@ -1,11 +1,11 @@
 # JahwaInspector.Light 작업 현황
 
-최종 갱신: 2026-07-22
+최종 갱신: 2026-07-24
 
 ## 프로젝트 개요
 
 - .NET 8 WPF 기반 측정 데이터 분석 도구
-- 지원 검사: FRA, DC SENSITIVITY, SCAN, SETTLING TIME
+- 지원 검사: FRA, DC SENSITIVITY, SCAN, SETTLING TIME, TILT
 - 주요 출력: 요약 CSV, Excel, 그래프 이미지
 
 ## 현재까지 구현된 내용
@@ -23,9 +23,23 @@
   - Data Type별 CSV/xlsx 파서(`Services/SettlingCsvReader.cs`), Settling Time/Overshoot 계산(`Services/SettlingMetrics.cs`)
   - 조건(그룹)별 Tolerance Band 개별 지정, Tail Window(%) 실시간 재계산
   - 그룹별 서브플롯 + 전체 그리드 보기, `Settling_Summary.csv`/조건별 PNG 내보내기, Judge(NG 사유) 표시
+- TILT 분석 신규 구현: `robocube` Data Type 1개 지원(2026-07-24)
+  - SCAN과 같은 Robocube 파일의 `TiltTx`/`TiltTy` 컬럼을 읽어 `sqrt(Tx²+Ty²)`로 Tilt 크기를 직접 계산(파일 자체의 `TiltV` 컬럼은 사용 안 함)
+  - Up/Down 구간 전체 중 최대치(Peak) 기반 판정, Spec Tilt(abs max) 1개 값과 비교
+  - 그래프는 Target-vs-Output 라인이 아니라 Tx(X축)-Ty(Y축) 4분면 산점도, Up=Orange/Down=Blue, 원점 크로스헤어 + Spec 반경 점선 원 표시
+  - TILT 요약 CSV/Excel/PNG/오류 로그를 SCAN과 동일한 구조로 `OUTPUT/TILT/` 아래 출력
 
 ## 최근 확인된 작업
 
+- 2026-07-24: TILT 검사항목 신규 구현(Robocube 우선)
+  - 배경: SCAN 버그 수정 중 확인된 Robocube 원본 파일(`AF/SCAN/Robocube/#1_*.csv`)에 `TiltTx`/`TiltTy`/`TiltV` 컬럼이 이미 포함돼 있음을 발견(`AF/Tilt/Robocube/` 아래 동일 파일명 폴더도 내용이 완전히 동일함을 확인) — 같은 원본 데이터에서 SCAN(Target vs LaserDis)과는 별도로 TILT(Tx vs Ty) 판정을 뽑아내는 구조
+  - 사용자 확정 사항: 출력값은 Tx/Ty를 합친 크기이되 파일의 `TiltV` 컬럼을 쓰지 않고 직접 재계산, 판정은 Up/Down 전체 구간 중 최대치(Peak) 기준, 그래프는 Tx-Ty 평면 4분면에 Up/Down을 다른 색으로 표시
+  - 리팩터링: `Services/RobocubeScanReader.cs`의 `FindSectionHeader`/`Split`/`FindColumn`/`TryParseDouble`/`ReadRangeHints`/`ReadSection`을 `internal`로 전환하고 `FindSectionHeader`가 임의의 필수 컬럼 목록(`params string[]`)을 받도록 일반화 — SCAN 동작이 리팩터링 전과 100% 동일함을 콘솔 하네스로 재검증 후 신규 `RobocubeTiltReader`가 동일 유틸을 재사용하도록 구현
+  - 신규 파일: `Services/RobocubeTiltReader.cs`(`TiltReadResult`), `Services/RobocubeTiltMetrics.cs`(`TiltMetricsResult`, Peak 계산), `Services/TiltDataTypes.cs`(`ITiltDataTypeHandler`/`TiltDataTypeRegistry`, SCAN의 Data Type Registry 패턴과 동일 구조 — 현재는 `robocube` 1개만 등록), `ViewModels/TiltResultRow.cs`
+  - 수정 파일: `ViewModels/SpecViewModels.cs`(`TiltSpecViewModel` 추가), `ViewModels/PlotFileItem.cs`(Tilt 전용 생성자 오버로드 추가 — DC Sensitivity 생성자와 파라미터 타입이 겹쳐 오버로드 모호성이 발생해 `IReadOnlyList<(double Tx, double Ty)>` 튜플 리스트 형태로 시그니처를 분리함), `ViewModels/MainViewModel.cs`(SCAN 블록 전체를 그대로 본떠 `ExportTiltBatch`/`JudgeTiltBySpec`/`ApplyTiltJudgementToAll`/`ConfirmTiltExport`/`BuildTiltMetadata`/`SaveTiltFailureLog`/`ShowTiltFailureMessage`/`BuildTiltSummaryTable`/`SaveTiltPlotPng` 추가, TILT Excel 요약은 기존 `SaveScanSummaryExcel`을 그대로 재사용), `Views/PlotView.xaml.cs`(`RefreshTiltPlot` 추가 — ScottPlot `Add.Circle`로 Spec 반경 점선 원, `Add.HorizontalLine(0)`/`VerticalLine(0)`으로 원점 크로스헤어), `App.xaml`(TiltSpecViewModel DataTemplate), `MainWindow.xaml`(TiltResults DataGrid)
+  - 검증: `dotnet build` 오류 0건(기존 SkiaSharp NU1701 경고 외 신규 경고 없음). 임시 콘솔 하네스(스크래치 폴더, 작업 후 삭제 예정)로 `SW DATA/AF/Tilt/Robocube/#1_0deg_1/2.csv`, `#1_180deg_1/2.csv` 4개 실측 파일을 `RobocubeTiltReader`+`RobocubeTiltMetrics`로 직접 실행 — 4개 모두 Up/Down 31개씩 정상 파싱되고, 우리가 독자적으로 계산한 Peak 크기가 파일 자체의 `TiltV` 컬럼 최대값과 거의 일치함(예: 4.207 vs 4.21)을 교차 검증해 `sqrt(Tx²+Ty²)` 계산 로직의 정확성을 확인
+  - **제약**: WPF GUI의 실제 시각적 렌더링(4분면 플롯 모양, 색상, Spec 원)은 이 작업 환경에서 화면 캡처로 직접 확인이 불가능함 — 빌드와 데이터 레이어(Reader/Metrics) 검증까지만 수행했고, 실제 화면에서의 최종 확인은 사용자가 앱을 실행해서 진행 필요
+  - 남은 작업: 다른 Data Type(AKM/DW/K-star/Anosys)에 Tilt 컬럼이 있는 실측 샘플이 확보되면 동일 패턴으로 추가, Spec Tilt 기본값(현재 "3"은 임시값)을 실측 스펙에 맞게 조정 필요, 실제 GUI에서 4분면 플롯/PNG/Excel 출력물 최종 확인 필요
 - 2026-07-22: DC SENSITIVITY에 SCAN과 동일한 Data Type 방식(`AKM`, `DW`) 도입 및 실제 샘플 CSV로 검증
 - 2026-07-22: SETTLING TIME에 `Anosys` Data Type 추가 및 실제 샘플 CSV로 검증
 - 2026-07-16~07-20: SETTLING TIME 기능 신규 구현(DW/Robocube/K-star), 이 문서에는 미반영 상태였음(아래 변경 이력에 소급 정리)
