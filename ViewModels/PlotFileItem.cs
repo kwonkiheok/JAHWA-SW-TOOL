@@ -26,6 +26,12 @@ public sealed class PlotFileItem : ViewModelBase
     public bool IsSettling { get; }
     public IReadOnlyList<(string GroupLabel, IReadOnlyList<SettlingSeries> Series)> SettlingGroups { get; }
 
+    public bool IsTilt { get; }
+    public IReadOnlyList<double> TiltUpTx { get; }
+    public IReadOnlyList<double> TiltUpTy { get; }
+    public IReadOnlyList<double> TiltDownTx { get; }
+    public IReadOnlyList<double> TiltDownTy { get; }
+
 
     private bool _isOverlaySelected;
     public bool IsOverlaySelected
@@ -65,6 +71,10 @@ public sealed class PlotFileItem : ViewModelBase
         ScanRefInput = Array.Empty<double>();
         ScanRefOutput = Array.Empty<double>();
         SettlingGroups = Array.Empty<(string, IReadOnlyList<SettlingSeries>)>();
+        TiltUpTx = Array.Empty<double>();
+        TiltUpTy = Array.Empty<double>();
+        TiltDownTx = Array.Empty<double>();
+        TiltDownTy = Array.Empty<double>();
     }
 
     public PlotFileItem(string fileName, string fullPath,
@@ -89,6 +99,10 @@ public sealed class PlotFileItem : ViewModelBase
         ScanRefInput = Array.Empty<double>();
         ScanRefOutput = Array.Empty<double>();
         SettlingGroups = Array.Empty<(string, IReadOnlyList<SettlingSeries>)>();
+        TiltUpTx = Array.Empty<double>();
+        TiltUpTy = Array.Empty<double>();
+        TiltDownTx = Array.Empty<double>();
+        TiltDownTy = Array.Empty<double>();
     }
 
     public PlotFileItem(string fileName, string fullPath,
@@ -115,6 +129,10 @@ public sealed class PlotFileItem : ViewModelBase
         ScanRefInput = scanRefInput;
         ScanRefOutput = scanRefOutput;
         SettlingGroups = Array.Empty<(string, IReadOnlyList<SettlingSeries>)>();
+        TiltUpTx = Array.Empty<double>();
+        TiltUpTy = Array.Empty<double>();
+        TiltDownTx = Array.Empty<double>();
+        TiltDownTy = Array.Empty<double>();
     }
 
     public PlotFileItem(string fileName, string fullPath,
@@ -136,5 +154,35 @@ public sealed class PlotFileItem : ViewModelBase
         ScanRefOutput = Array.Empty<double>();
         IsSettling = true;
         SettlingGroups = settlingGroups;
+        TiltUpTx = Array.Empty<double>();
+        TiltUpTy = Array.Empty<double>();
+        TiltDownTx = Array.Empty<double>();
+        TiltDownTy = Array.Empty<double>();
+    }
+
+    public PlotFileItem(string fileName, string fullPath,
+        IReadOnlyList<(double Tx, double Ty)> tiltUp,
+        IReadOnlyList<(double Tx, double Ty)> tiltDown)
+    {
+        FileName = fileName;
+        FullPath = fullPath;
+        Points = Array.Empty<BodePoint>();
+        IsAllOverlayItem = false;
+        DcUpInput = Array.Empty<double>();
+        DcUpOutput = Array.Empty<double>();
+        DcDownInput = Array.Empty<double>();
+        DcDownOutput = Array.Empty<double>();
+        ScanUpInput = Array.Empty<double>();
+        ScanUpOutput = Array.Empty<double>();
+        ScanDownInput = Array.Empty<double>();
+        ScanDownOutput = Array.Empty<double>();
+        ScanRefInput = Array.Empty<double>();
+        ScanRefOutput = Array.Empty<double>();
+        SettlingGroups = Array.Empty<(string, IReadOnlyList<SettlingSeries>)>();
+        IsTilt = true;
+        TiltUpTx = tiltUp.Select(p => p.Tx).ToArray();
+        TiltUpTy = tiltUp.Select(p => p.Ty).ToArray();
+        TiltDownTx = tiltDown.Select(p => p.Tx).ToArray();
+        TiltDownTy = tiltDown.Select(p => p.Ty).ToArray();
     }
 }

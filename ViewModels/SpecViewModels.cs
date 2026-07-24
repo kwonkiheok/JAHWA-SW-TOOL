@@ -214,6 +214,58 @@ public sealed class ScanSpecViewModel : ViewModelBase
     public string LastSummary { get => _lastSummary; set { _lastSummary = value; OnPropertyChanged(); } }
 }
 
+public sealed class TiltSpecViewModel : ViewModelBase
+{
+    public IReadOnlyList<string> DataTypeOptions { get; } = TiltDataTypeRegistry.Names;
+
+    private string _selectedDataType = "robocube";
+    public string SelectedDataType
+    {
+        get => _selectedDataType;
+        set
+        {
+            _selectedDataType = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConfiguredInputHeader));
+            OnPropertyChanged(nameof(ConfiguredOutputHeader));
+            OnPropertyChanged(nameof(ConfiguredHeaderDescription));
+        }
+    }
+
+    public string ConfiguredInputHeader => TiltDataTypeRegistry.Get(SelectedDataType).InputHeaderDisplay;
+
+    public string ConfiguredOutputHeader => TiltDataTypeRegistry.Get(SelectedDataType).OutputHeaderDisplay;
+
+    public string ConfiguredHeaderDescription => TiltDataTypeRegistry.Get(SelectedDataType).HeaderRuleDescription;
+
+    private string _specTilt = "3";
+    public string SpecTilt { get => _specTilt; set { _specTilt = value; OnPropertyChanged(); } }
+
+    private bool _savePlotImage = true;
+    public bool SavePlotImage { get => _savePlotImage; set { _savePlotImage = value; OnPropertyChanged(); } }
+
+    private bool _saveSummaryExcel = true;
+    public bool SaveSummaryExcel { get => _saveSummaryExcel; set { _saveSummaryExcel = value; OnPropertyChanged(); } }
+
+    private string _lastPeakUp = "-";
+    public string LastPeakUp { get => _lastPeakUp; set { _lastPeakUp = value; OnPropertyChanged(); } }
+
+    private string _lastPeakDown = "-";
+    public string LastPeakDown { get => _lastPeakDown; set { _lastPeakDown = value; OnPropertyChanged(); } }
+
+    private string _lastJudge = "-";
+    public string LastJudge { get => _lastJudge; set { _lastJudge = value; OnPropertyChanged(); } }
+
+    private string _lastReason = "-";
+    public string LastReason { get => _lastReason; set { _lastReason = value; OnPropertyChanged(); } }
+
+    private string _sourceFile = "";
+    public string SourceFile { get => _sourceFile; set { _sourceFile = value; OnPropertyChanged(); } }
+
+    private string _lastSummary = "-";
+    public string LastSummary { get => _lastSummary; set { _lastSummary = value; OnPropertyChanged(); } }
+}
+
 public sealed class SettlingSpecViewModel : ViewModelBase
 {
     private string _toleranceBand = "100";
