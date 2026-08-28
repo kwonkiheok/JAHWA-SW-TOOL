@@ -266,6 +266,180 @@ public sealed class TiltSpecViewModel : ViewModelBase
     public string LastSummary { get => _lastSummary; set { _lastSummary = value; OnPropertyChanged(); } }
 }
 
+public sealed class SinewaveSpecViewModel : ViewModelBase
+{
+    public IReadOnlyList<string> DataTypeOptions { get; } = SinewaveDataTypeRegistry.Names;
+
+    private string _selectedDataType = "AKM";
+    public string SelectedDataType
+    {
+        get => _selectedDataType;
+        set
+        {
+            _selectedDataType = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConfiguredInputHeader));
+            OnPropertyChanged(nameof(ConfiguredOutputHeader));
+            OnPropertyChanged(nameof(ConfiguredHeaderDescription));
+        }
+    }
+
+    public string ConfiguredInputHeader => SinewaveDataTypeRegistry.Get(SelectedDataType).InputHeaderDisplay;
+
+    public string ConfiguredOutputHeader => SinewaveDataTypeRegistry.Get(SelectedDataType).OutputHeaderDisplay;
+
+    public string ConfiguredHeaderDescription => SinewaveDataTypeRegistry.Get(SelectedDataType).HeaderRuleDescription;
+
+    private string _specMaxErr = "50";
+    public string SpecMaxErr { get => _specMaxErr; set { _specMaxErr = value; OnPropertyChanged(); } }
+
+    private bool _savePlotImage = true;
+    public bool SavePlotImage { get => _savePlotImage; set { _savePlotImage = value; OnPropertyChanged(); } }
+
+    private bool _saveSummaryExcel = true;
+    public bool SaveSummaryExcel { get => _saveSummaryExcel; set { _saveSummaryExcel = value; OnPropertyChanged(); } }
+
+    private string _lastMaxErrX = "-";
+    public string LastMaxErrX { get => _lastMaxErrX; set { _lastMaxErrX = value; OnPropertyChanged(); } }
+
+    private string _lastMaxErrY = "-";
+    public string LastMaxErrY { get => _lastMaxErrY; set { _lastMaxErrY = value; OnPropertyChanged(); } }
+
+    private string _lastJudge = "-";
+    public string LastJudge { get => _lastJudge; set { _lastJudge = value; OnPropertyChanged(); } }
+
+    private string _lastReason = "-";
+    public string LastReason { get => _lastReason; set { _lastReason = value; OnPropertyChanged(); } }
+
+    private string _sourceFile = "";
+    public string SourceFile { get => _sourceFile; set { _sourceFile = value; OnPropertyChanged(); } }
+
+    private string _lastSummary = "-";
+    public string LastSummary { get => _lastSummary; set { _lastSummary = value; OnPropertyChanged(); } }
+}
+
+public sealed class CircleTestSpecViewModel : ViewModelBase
+{
+    public IReadOnlyList<string> DataTypeOptions { get; } = CircleTestDataTypeRegistry.Names;
+
+    private string _selectedDataType = "AKM";
+    public string SelectedDataType
+    {
+        get => _selectedDataType;
+        set
+        {
+            _selectedDataType = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConfiguredInputHeader));
+            OnPropertyChanged(nameof(ConfiguredOutputHeader));
+            OnPropertyChanged(nameof(ConfiguredHeaderDescription));
+        }
+    }
+
+    public string ConfiguredInputHeader => CircleTestDataTypeRegistry.Get(SelectedDataType).InputHeaderDisplay;
+
+    public string ConfiguredOutputHeader => CircleTestDataTypeRegistry.Get(SelectedDataType).OutputHeaderDisplay;
+
+    public string ConfiguredHeaderDescription => CircleTestDataTypeRegistry.Get(SelectedDataType).HeaderRuleDescription;
+
+    private string _specMaxErr = "150";
+    public string SpecMaxErr { get => _specMaxErr; set { _specMaxErr = value; OnPropertyChanged(); } }
+
+    private bool _savePlotImage = true;
+    public bool SavePlotImage { get => _savePlotImage; set { _savePlotImage = value; OnPropertyChanged(); } }
+
+    private bool _saveSummaryExcel = true;
+    public bool SaveSummaryExcel { get => _saveSummaryExcel; set { _saveSummaryExcel = value; OnPropertyChanged(); } }
+
+    private string _lastMaxErrX = "-";
+    public string LastMaxErrX { get => _lastMaxErrX; set { _lastMaxErrX = value; OnPropertyChanged(); } }
+
+    private string _lastMaxErrY = "-";
+    public string LastMaxErrY { get => _lastMaxErrY; set { _lastMaxErrY = value; OnPropertyChanged(); } }
+
+    private string _lastJudge = "-";
+    public string LastJudge { get => _lastJudge; set { _lastJudge = value; OnPropertyChanged(); } }
+
+    private string _lastReason = "-";
+    public string LastReason { get => _lastReason; set { _lastReason = value; OnPropertyChanged(); } }
+
+    private string _sourceFile = "";
+    public string SourceFile { get => _sourceFile; set { _sourceFile = value; OnPropertyChanged(); } }
+
+    private string _lastSummary = "-";
+    public string LastSummary { get => _lastSummary; set { _lastSummary = value; OnPropertyChanged(); } }
+}
+
+public sealed class SquareTestSpecViewModel : ViewModelBase
+{
+    public IReadOnlyList<string> DataTypeOptions { get; } = SquareTestDataTypeRegistry.Names;
+
+    private string _selectedDataType = "AKM";
+    public string SelectedDataType
+    {
+        get => _selectedDataType;
+        set
+        {
+            _selectedDataType = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConfiguredInputHeader));
+            OnPropertyChanged(nameof(ConfiguredOutputHeader));
+            OnPropertyChanged(nameof(ConfiguredHeaderDescription));
+        }
+    }
+
+    public string ConfiguredInputHeader => SquareTestDataTypeRegistry.Get(SelectedDataType).InputHeaderDisplay;
+
+    public string ConfiguredOutputHeader => SquareTestDataTypeRegistry.Get(SelectedDataType).OutputHeaderDisplay;
+
+    public string ConfiguredHeaderDescription => SquareTestDataTypeRegistry.Get(SelectedDataType).HeaderRuleDescription;
+
+    private string _specToleranceBandPercent = "5";
+    public string SpecToleranceBandPercent { get => _specToleranceBandPercent; set { _specToleranceBandPercent = value; OnPropertyChanged(); } }
+
+    private string _specMaxSettlingTimeMs = "30";
+    public string SpecMaxSettlingTimeMs { get => _specMaxSettlingTimeMs; set { _specMaxSettlingTimeMs = value; OnPropertyChanged(); } }
+
+    private string _specMaxOvershoot = "170";
+    public string SpecMaxOvershoot { get => _specMaxOvershoot; set { _specMaxOvershoot = value; OnPropertyChanged(); } }
+
+    private bool _savePlotImage = true;
+    public bool SavePlotImage { get => _savePlotImage; set { _savePlotImage = value; OnPropertyChanged(); } }
+
+    private bool _saveSummaryExcel = true;
+    public bool SaveSummaryExcel { get => _saveSummaryExcel; set { _saveSummaryExcel = value; OnPropertyChanged(); } }
+
+    private string _lastSettling = "-";
+    public string LastSettling { get => _lastSettling; set { _lastSettling = value; OnPropertyChanged(); } }
+
+    private string _lastOvershoot = "-";
+    public string LastOvershoot { get => _lastOvershoot; set { _lastOvershoot = value; OnPropertyChanged(); } }
+
+    private string _lastSettlingUp = "-";
+    public string LastSettlingUp { get => _lastSettlingUp; set { _lastSettlingUp = value; OnPropertyChanged(); } }
+
+    private string _lastOvershootUp = "-";
+    public string LastOvershootUp { get => _lastOvershootUp; set { _lastOvershootUp = value; OnPropertyChanged(); } }
+
+    private string _lastSettlingDown = "-";
+    public string LastSettlingDown { get => _lastSettlingDown; set { _lastSettlingDown = value; OnPropertyChanged(); } }
+
+    private string _lastOvershootDown = "-";
+    public string LastOvershootDown { get => _lastOvershootDown; set { _lastOvershootDown = value; OnPropertyChanged(); } }
+
+    private string _lastJudge = "-";
+    public string LastJudge { get => _lastJudge; set { _lastJudge = value; OnPropertyChanged(); } }
+
+    private string _lastReason = "-";
+    public string LastReason { get => _lastReason; set { _lastReason = value; OnPropertyChanged(); } }
+
+    private string _sourceFile = "";
+    public string SourceFile { get => _sourceFile; set { _sourceFile = value; OnPropertyChanged(); } }
+
+    private string _lastSummary = "-";
+    public string LastSummary { get => _lastSummary; set { _lastSummary = value; OnPropertyChanged(); } }
+}
+
 public sealed class SettlingSpecViewModel : ViewModelBase
 {
     private string _toleranceBand = "100";

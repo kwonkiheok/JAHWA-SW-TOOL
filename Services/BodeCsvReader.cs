@@ -24,7 +24,7 @@ public static class BodeCsvReader
         if (headerless)
             return Parse(lines, d, first, 0, 1, 2);
 
-        var headers = firstCells.Select(Norm).ToArray();
+        var headers = firstCells.ToArray();
         var definition = FraDataTypeRegistry.Get(dataType);
         int fi = Find(headers, definition.FrequencyHeaders);
         int gi = Find(headers, definition.GainHeaders);
@@ -60,16 +60,9 @@ public static class BodeCsvReader
     private static bool IsNumericRow(IReadOnlyList<string> c)
         => c.Count >= 3 && TryD(c[0], out _) && TryD(c[1], out _) && TryD(c[2], out _);
 
+    // 헤더 이름 변형 대응은 HeaderMatch가 담당한다.
     private static int Find(string[] headers, IReadOnlyList<string> candidates)
-    {
-        foreach (var s in candidates)
-        {
-            var ns = Norm(s);
-            for (int i = 0; i < headers.Length; i++)
-                if (headers[i] == ns) return i;
-        }
-        return -1;
-    }
+        => HeaderMatch.FindIndex(headers, candidates);
 
     private static bool TryD(string s, out double v)
     {
@@ -77,13 +70,6 @@ public static class BodeCsvReader
         return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v)
             || double.TryParse(s, NumberStyles.Float, CultureInfo.CurrentCulture, out v);
     }
-
-    private static string Norm(string s)
-        => (s ?? "").Trim().ToLowerInvariant()
-            .Replace(" ", "")
-            .Replace("[", "").Replace("]", "")
-            .Replace("(", "").Replace(")", "")
-            .Replace("°", "deg");
 
     private static List<string> Split(string line, char d) => line.Split(d).Select(x => x.Trim()).ToList();
 }

@@ -329,6 +329,100 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
 
+                                <DataGrid ItemsSource="{Binding SinewaveResults}"
+                                          SelectedItem="{Binding SelectedSinewaveRow}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          Margin="12">
+                                    <DataGrid.Style>
+                                        <Style TargetType="DataGrid">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsTableTab}" Value="True"/>
+                                                        <Condition Binding="{Binding IsSinewaveInspection}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.Style>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="2*"/>
+                                        <DataGridTextColumn Header="Judge" Binding="{Binding Judge}" Width="*"/>
+                                        <DataGridTextColumn Header="Reason" Binding="{Binding JudgeReason}" Width="2*"/>
+                                        <DataGridTextColumn Header="Sample Count" Binding="{Binding SampleCount}" Width="*"/>
+                                        <DataGridTextColumn Header="MaxErr X" Binding="{Binding MaxErrX, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="MaxErr Y" Binding="{Binding MaxErrY, StringFormat={}{0:F3}}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <DataGrid ItemsSource="{Binding CircleResults}"
+                                          SelectedItem="{Binding SelectedCircleRow}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          Margin="12">
+                                    <DataGrid.Style>
+                                        <Style TargetType="DataGrid">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsTableTab}" Value="True"/>
+                                                        <Condition Binding="{Binding IsCircleInspection}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.Style>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="2*"/>
+                                        <DataGridTextColumn Header="Judge" Binding="{Binding Judge}" Width="*"/>
+                                        <DataGridTextColumn Header="Reason" Binding="{Binding JudgeReason}" Width="2*"/>
+                                        <DataGridTextColumn Header="Sample Count" Binding="{Binding SampleCount}" Width="*"/>
+                                        <DataGridTextColumn Header="MaxErr X" Binding="{Binding MaxErrX, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="MaxErr Y" Binding="{Binding MaxErrY, StringFormat={}{0:F3}}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <DataGrid ItemsSource="{Binding SquareResults}"
+                                          SelectedItem="{Binding SelectedSquareRow}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          Margin="12">
+                                    <DataGrid.Style>
+                                        <Style TargetType="DataGrid">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsTableTab}" Value="True"/>
+                                                        <Condition Binding="{Binding IsSquareInspection}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGrid.Style>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="2*"/>
+                                        <DataGridTextColumn Header="Judge" Binding="{Binding Judge}" Width="*"/>
+                                        <DataGridTextColumn Header="Reason" Binding="{Binding JudgeReason}" Width="2*"/>
+                                        <DataGridTextColumn Header="Sample Count" Binding="{Binding SampleCount}" Width="*"/>
+                                        <DataGridTextColumn Header="Settling (Max)" Binding="{Binding MaxSettlingMs, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="Overshoot (Max)" Binding="{Binding MaxOvershoot, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="Settling Up" Binding="{Binding MaxSettlingUpMs, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="Overshoot Up" Binding="{Binding MaxOvershootUp, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="Settling Down" Binding="{Binding MaxSettlingDownMs, StringFormat={}{0:F3}}" Width="*"/>
+                                        <DataGridTextColumn Header="Overshoot Down" Binding="{Binding MaxOvershootDown, StringFormat={}{0:F3}}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
                                 <DataGrid ItemsSource="{Binding SettlingResults}"
                                           SelectedItem="{Binding SelectedSettlingRow}"
                                           AutoGenerateColumns="False"

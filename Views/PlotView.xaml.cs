@@ -126,6 +126,29 @@ public partial class PlotView : System.Windows.Controls.UserControl
     {
         if (!IsLoaded || _vm is null || !_vm.IsPlotTab) return;
 
+        if (_vm.IsSinewaveInspection)
+        {
+            _fraMinLogX = null;
+            _fraMaxLogX = null;
+            ClearSelectedFraHoverCache();
+            _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            RefreshSinewavePlot();
+            return;
+        }
+
+        if (_vm.IsSquareInspection)
+        {
+            _fraMinLogX = null;
+            _fraMaxLogX = null;
+            ClearSelectedFraHoverCache();
+            _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            RefreshSquarePlot();
+            return;
+        }
+
+        EnsurePlotControl();
+        if (_wpfPlot is null) return;
+
         if (_vm.IsSettlingInspection)
         {
             _fraMinLogX = null;
@@ -135,9 +158,6 @@ public partial class PlotView : System.Windows.Controls.UserControl
             RefreshSettlingPlot();
             return;
         }
-
-        EnsurePlotControl();
-        if (_wpfPlot is null) return;
 
         _wpfPlot.Plot.Clear();
         _configured = false;
@@ -165,6 +185,14 @@ public partial class PlotView : System.Windows.Controls.UserControl
             ClearSelectedFraHoverCache();
             _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
             RefreshTiltPlot();
+        }
+        else if (_vm.IsCircleInspection)
+        {
+            _fraMinLogX = null;
+            _fraMaxLogX = null;
+            ClearSelectedFraHoverCache();
+            _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            RefreshCirclePlot();
         }
         else
             RefreshFraPlot();
@@ -423,9 +451,17 @@ public partial class PlotView : System.Windows.Controls.UserControl
             maxAbs = 1;
         maxAbs *= 1.15;
 
-        plt.Axes.SetLimits(-maxAbs, maxAbs, -maxAbs, maxAbs);
-        plt.Axes.Bottom.TickGenerator = new NumericAutomatic();
-        plt.Axes.Left.TickGenerator = new NumericAutomatic();
+        double niceMaxAbs = Math.Max(1, Math.Ceiling(maxAbs));
+
+        plt.Axes.SetLimits(-niceMaxAbs, niceMaxAbs, -niceMaxAbs, niceMaxAbs);
+        plt.Axes.Bottom.TickGenerator = new NumericFixedInterval(1)
+        {
+            LabelFormatter = x => x.ToString("0")
+        };
+        plt.Axes.Left.TickGenerator = new NumericFixedInterval(1)
+        {
+            LabelFormatter = x => x.ToString("0")
+        };
 
         var h0 = plt.Add.HorizontalLine(0);
         h0.Color = Colors.Gray.WithOpacity(0.6);
@@ -449,7 +485,7 @@ public partial class PlotView : System.Windows.Controls.UserControl
         {
             bool isSelected = ReferenceEquals(item, active) || active is null;
             bool hasActive = active is not null;
-            double lineWidth = isSelected ? 1.25 : 0.75;
+            double lineWidth = isSelected ? 2.25 : 1.25;
             double alpha = hasActive ? (isSelected ? 0.98 : 0.16) : 0.55;
             float markerSize = selected is null ? 0 : 2.4f;
 
@@ -473,6 +509,176 @@ public partial class PlotView : System.Windows.Controls.UserControl
 
             idx++;
         }
+
+        plt.Legend.IsVisible = true;
+    }
+
+    // ScottPlot의 Multiplot(2단 서브플롯)이 WPF 호스트 안에서 두 패널을 겹쳐 그리는 렌더링 버그가 있어,
+    // Settling 그룹 그리드와 동일한 방식(WpfPlot 컨트롤을 축마다 별도로 생성)으로 대체했다.
+    private void RefreshSinewavePlot()
+    {
+        if (_vm is null) return;
+
+        _wpfPlot = null;
+        PlotHost.Children.Clear();
+
+        var active = _vm.ActivePlotFile;
+        var item = active ?? _vm.PlotFilesFiltered.FirstOrDefault(x => x.IsSinewave);
+        if (item is null || item.SinewaveTimeMs.Count == 0)
+            return;
+
+        double specMaxErr = ParseLiveDouble(_vm.SinewaveSpec.SpecMaxErr) ?? 0;
+
+        var grid = new System.Windows.Controls.Grid();
+        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        PlotHost.Children.Add(grid);
+
+        var wpX = new WpfPlot { Margin = new System.Windows.Thickness(2) };
+        System.Windows.Controls.Grid.SetRow(wpX, 0);
+        grid.Children.Add(wpX);
+        ConfigureSinewavePanel(wpX.Plot, "X-axis", item.SinewaveTimeMs, item.SinewavePosiX, item.SinewaveHallX, item.SinewaveDiffX, specMaxErr);
+        wpX.Refresh();
+
+        var wpY = new WpfPlot { Margin = new System.Windows.Thickness(2) };
+        System.Windows.Controls.Grid.SetRow(wpY, 1);
+        grid.Children.Add(wpY);
+        ConfigureSinewavePanel(wpY.Plot, "Y-axis", item.SinewaveTimeMs, item.SinewavePosiY, item.SinewaveHallY, item.SinewaveDiffY, specMaxErr);
+        wpY.Refresh();
+    }
+
+    // AKM(축 1개)/DW(축 2개: X,Y)처럼 파일마다 축 개수가 달라서 SINE WAVE와 같은 방식(축마다
+    // 독립된 WpfPlot)을 개수에 맞게 동적으로 생성한다. Target vs Value 오버레이만 표시(Diff 없음).
+    private void RefreshSquarePlot()
+    {
+        if (_vm is null) return;
+
+        _wpfPlot = null;
+        PlotHost.Children.Clear();
+
+        var active = _vm.ActivePlotFile;
+        var item = active ?? _vm.PlotFilesFiltered.FirstOrDefault(x => x.IsSquareTest);
+        if (item is null || item.SquareAxes.Count == 0)
+            return;
+
+        var grid = new System.Windows.Controls.Grid();
+        for (int i = 0; i < item.SquareAxes.Count; i++)
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        PlotHost.Children.Add(grid);
+
+        for (int i = 0; i < item.SquareAxes.Count; i++)
+        {
+            var axis = item.SquareAxes[i];
+            var wp = new WpfPlot { Margin = new System.Windows.Thickness(2) };
+            System.Windows.Controls.Grid.SetRow(wp, i);
+            grid.Children.Add(wp);
+            ConfigureSinewavePanel(wp.Plot, axis.Label, axis.TimeMs, axis.Target, axis.Value, Array.Empty<double>(), 0);
+            wp.Refresh();
+        }
+    }
+
+    // X축과 Y축 패널을 동일한 방식으로 구성한다. Posi(target)와 Hall(실제)을 같은 왼쪽 축 스케일로
+    // 겹쳐 그리고, Diff는 오른쪽 축(+Spec 점선)에 표시한다.
+    private static void ConfigureSinewavePanel(
+        ScottPlot.Plot plt,
+        string title,
+        IReadOnlyList<double> time,
+        IReadOnlyList<double> posi,
+        IReadOnlyList<double> hall,
+        IReadOnlyList<double> diff,
+        double specMaxErr)
+    {
+        plt.FigureBackground.Color = Colors.White;
+        plt.DataBackground.Color = Colors.White;
+        plt.Grid.MajorLineColor = Colors.Black.WithOpacity(.15);
+        plt.Grid.MinorLineColor = Colors.Black.WithOpacity(.05);
+        plt.Title(title, 13);
+        plt.XLabel("time[ms]");
+        plt.YLabel("Code");
+        plt.Axes.Left.Label.FontSize = 11;
+        plt.Axes.Left.TickLabelStyle.FontSize = 10;
+        plt.Axes.Bottom.Label.FontSize = 11;
+        plt.Axes.Bottom.TickLabelStyle.FontSize = 10;
+        plt.Legend.FontSize = 10;
+
+        if (time.Count == 0) return;
+
+        var posiLine = plt.Add.Scatter(time.ToArray(), posi.ToArray());
+        posiLine.Color = Colors.Red;
+        posiLine.LineWidth = 0.9f;
+        posiLine.LinePattern = LinePattern.Dashed;
+        posiLine.MarkerSize = 0;
+        posiLine.LegendText = "Target";
+
+        var hallLine = plt.Add.Scatter(time.ToArray(), hall.ToArray());
+        hallLine.Color = Colors.Blue;
+        hallLine.LineWidth = 1.4f;
+        hallLine.MarkerSize = 0;
+        hallLine.LegendText = "Hall";
+
+        double minX = time.Min();
+        double maxX = time.Max();
+        plt.Axes.SetLimitsX(minX, maxX);
+
+        plt.Legend.IsVisible = true;
+    }
+
+    // CIRCLE TEST는 시간에 따른 X/Y가 아니라 원을 그리는 궤적 자체가 핵심이므로,
+    // TILT와 같은 방식(원점 대칭 4분면 XY 평면)으로 ReadVt(목표 원) vs Hall(실측 궤적)을 겹쳐 그린다.
+    private void RefreshCirclePlot()
+    {
+        if (_wpfPlot is null || _vm is null) return;
+
+        var plt = _wpfPlot.Plot;
+        plt.FigureBackground.Color = Colors.White;
+        plt.DataBackground.Color = Colors.White;
+        plt.Grid.MajorLineColor = Colors.Black.WithOpacity(.15);
+        plt.Grid.MinorLineColor = Colors.Black.WithOpacity(.05);
+        plt.XLabel("X");
+        plt.YLabel("Y");
+        plt.Axes.Right.IsVisible = false;
+
+        var active = _vm.ActivePlotFile;
+        var item = active ?? _vm.PlotFilesFiltered.FirstOrDefault(x => x.IsCircleTest);
+        if (item is null || item.CircleTimeMs.Count == 0)
+            return;
+
+        var allX = item.CircleReadVtX.Concat(item.CircleHallX).ToList();
+        var allY = item.CircleReadVtY.Concat(item.CircleHallY).ToList();
+        if (allX.Count == 0 || allY.Count == 0)
+            return;
+
+        double centerX = (allX.Max() + allX.Min()) / 2.0;
+        double centerY = (allY.Max() + allY.Min()) / 2.0;
+        double radius = Math.Max(
+            allX.Select(v => Math.Abs(v - centerX)).DefaultIfEmpty(1).Max(),
+            allY.Select(v => Math.Abs(v - centerY)).DefaultIfEmpty(1).Max());
+        if (radius <= 0 || double.IsNaN(radius) || double.IsInfinity(radius))
+            radius = 1;
+        radius *= 1.15;
+
+        plt.Axes.SetLimits(centerX - radius, centerX + radius, centerY - radius, centerY + radius);
+
+        var h0 = plt.Add.HorizontalLine(centerY);
+        h0.Color = Colors.Gray.WithOpacity(0.6);
+        h0.LineWidth = 1;
+
+        var v0 = plt.Add.VerticalLine(centerX);
+        v0.Color = Colors.Gray.WithOpacity(0.6);
+        v0.LineWidth = 1;
+
+        var targetLine = plt.Add.Scatter(item.CircleReadVtX.ToArray(), item.CircleReadVtY.ToArray());
+        targetLine.Color = Colors.Red;
+        targetLine.LineWidth = 1.2f;
+        targetLine.LinePattern = LinePattern.Dashed;
+        targetLine.MarkerSize = 0;
+        targetLine.LegendText = "Target";
+
+        var hallLine = plt.Add.Scatter(item.CircleHallX.ToArray(), item.CircleHallY.ToArray());
+        hallLine.Color = Colors.Blue;
+        hallLine.LineWidth = 1.6f;
+        hallLine.MarkerSize = 0;
+        hallLine.LegendText = "Hall";
 
         plt.Legend.IsVisible = true;
     }

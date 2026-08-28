@@ -50,7 +50,7 @@ public static class RobocubeScanReader
         for (int i = 0; i < lines.Count; i++)
         {
             var cells = Split(lines[i]);
-            if (cells.Any(x => string.Equals(x.Trim(), marker, StringComparison.OrdinalIgnoreCase))
+            if (HeaderMatch.FindIndex(cells, [marker], allowFuzzy: false) >= 0
                 && requiredColumns.All(col => FindColumn(cells, col) >= 0))
             {
                 return i;
@@ -128,17 +128,10 @@ public static class RobocubeScanReader
         return TryParseDouble(tail, out value);
     }
 
-    internal static int FindColumn(IReadOnlyList<string> cells, string name)
-    {
-        string target = Normalize(name);
-        for (int i = 0; i < cells.Count; i++)
-        {
-            if (Normalize(cells[i]) == target)
-                return i;
-        }
-
-        return -1;
-    }
+    // 헤더 이름 변형 대응은 HeaderMatch가 담당한다.
+    // 기존 Normalize는 공백만 제거해서 "LaserDis[um]" 같은 변형을 놓쳤다.
+    internal static int FindColumn(IReadOnlyList<string> cells, params string[] names)
+        => HeaderMatch.FindIndex(cells, names);
 
     internal static List<string> Split(string line)
     {
@@ -153,10 +146,6 @@ public static class RobocubeScanReader
             .ToList();
     }
 
-    private static string Normalize(string value)
-        => (value ?? string.Empty).Trim().ToLowerInvariant().Replace(" ", "");
-
     internal static bool TryParseDouble(string? value, out double result)
-        => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
-           || double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out result);
+        => HeaderMatch.TryParseNumber(value, out result);
 }

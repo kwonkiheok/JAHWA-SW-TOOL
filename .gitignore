@@ -24,3 +24,6 @@ x86/
 # NuGet
 *.nupkg
 packages/
+
+# WPF 빌드 중 자동 생성되는 임시 프로젝트 파일
+*_wpftmp.csproj

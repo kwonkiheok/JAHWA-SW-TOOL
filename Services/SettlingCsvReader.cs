@@ -130,7 +130,20 @@ public static class SettlingCsvReader
         for (int g = 0; g < groupStarts.Count; g++)
         {
             int start = groupStarts[g];
-            int end = g + 1 < groupStarts.Count ? groupStarts[g + 1] : subHeaderRow.Count;
+            int end;
+            if (g + 1 < groupStarts.Count)
+            {
+                end = groupStarts[g + 1];
+            }
+            else
+            {
+                // 마지막 그룹은 다음 그룹 시작 컬럼이 없어 subHeaderRow.Count를 그대로 쓰면
+                // 소스 csv 끝의 트레일링 빈 컬럼(콤마 하나 더 붙는 export 특성)까지 그룹에
+                // 포함돼 매 행 파싱이 실패하고 그룹 전체가 버려진다. 끝쪽 빈/공백 컬럼을 잘라낸다.
+                end = subHeaderRow.Count;
+                while (end > start && string.IsNullOrWhiteSpace(subHeaderRow[end - 1]))
+                    end--;
+            }
             int dataColCount = (end - start) - 1; // Time 컬럼 제외
             if (dataColCount < 2)
                 continue;
@@ -369,40 +382,13 @@ public static class SettlingCsvReader
         return -1;
     }
 
+    // 헤더 이름 변형 대응(정확 -> 접두 -> 부분 일치)은 HeaderMatch가 담당한다.
     private static string? FindBestMatchingColumn(IEnumerable<string> columns, IEnumerable<string> candidates)
-    {
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var col in columns)
-        {
-            var key = NormalizeName(col);
-            if (!map.ContainsKey(key))
-                map[key] = col;
-        }
+        => HeaderMatch.FindName(columns, candidates);
 
-        foreach (var candidate in candidates)
-        {
-            var key = NormalizeName(candidate);
-            if (map.TryGetValue(key, out var actual))
-                return actual;
-        }
-
-        return null;
-    }
-
-    private static string NormalizeName(string? name)
-    {
-        var s = (name ?? string.Empty).Trim().ToLowerInvariant();
-        foreach (var ch in new[] { " ", "_", "[", "]", "(", ")", "-", "/" })
-            s = s.Replace(ch, string.Empty);
-        return s;
-    }
+    // 정규화 규칙은 HeaderMatch 한 곳에서만 관리한다.
+    private static string NormalizeName(string? name) => HeaderMatch.Normalize(name);
 
     private static bool TryParseFlexibleDouble(string? s, out double value)
-    {
-        if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
-            return true;
-        if (double.TryParse(s, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
-            return true;
-        return false;
-    }
+        => HeaderMatch.TryParseNumber(s, out value);
 }

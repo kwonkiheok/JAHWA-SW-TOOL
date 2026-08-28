@@ -129,30 +129,9 @@ public static class ScanCsvReader
         return ",";
     }
 
-    private static int DetectHeaderRow(
-        IReadOnlyList<List<string>> rows,
-        IEnumerable<string> inputCandidates,
-        IEnumerable<string> outputCandidates,
-        int maxScanRows)
-    {
-        var inputNorm = inputCandidates.Select(NormalizeName).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-        var outputNorm = outputCandidates.Select(NormalizeName).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-
-        for (int rowIdx = 0; rowIdx < Math.Min(maxScanRows, rows.Count); rowIdx++)
-        {
-            var values = rows[rowIdx]
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(NormalizeName)
-                .ToList();
-
-            bool hasInput = inputNorm.Any(candidate => values.Any(cell => cell == candidate));
-            bool hasOutput = outputNorm.Any(candidate => values.Any(cell => cell == candidate));
-            if (hasInput && hasOutput)
-                return rowIdx;
-        }
-
-        return -1;
-    }
+    // 헤더 행 탐지도 HeaderMatch로 위임한다. Input/Output 후보가 모두 발견되는 첫 행이 헤더 행이다.
+    private static int DetectHeaderRow(IReadOnlyList<List<string>> rows, IEnumerable<string> inputCandidates, IEnumerable<string> outputCandidates, int maxScanRows)
+        => HeaderMatch.FindHeaderRow(rows, maxScanRows, inputCandidates, outputCandidates);
 
     private static IReadOnlyList<ScanRangeHint> ParseRangeHints(IReadOnlyList<List<string>> rows, int headerRow)
     {
@@ -212,20 +191,9 @@ public static class ScanCsvReader
         return null;
     }
 
-    private static string NormalizeName(string? name)
-    {
-        var s = (name ?? string.Empty).Trim().ToLowerInvariant();
-        foreach (var ch in new[] { " ", "_", "[", "]", "(", ")", "-", "/" })
-            s = s.Replace(ch, string.Empty);
-        return s;
-    }
+    // 정규화 규칙은 HeaderMatch 한 곳에서만 관리한다.
+    private static string NormalizeName(string? name) => HeaderMatch.Normalize(name);
 
     private static bool TryParseFlexibleDouble(string? s, out double value)
-    {
-        if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out value))
-            return true;
-        if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out value))
-            return true;
-        return false;
-    }
+        => HeaderMatch.TryParseNumber(s, out value);
 }

@@ -136,56 +136,17 @@ public static class DcSensitivityCsvReader
         return rows;
     }
 
+    // 헤더 행 탐지도 HeaderMatch로 위임한다. Input/Output 후보가 모두 발견되는 첫 행이 헤더 행이다.
     private static int DetectHeaderRow(List<List<string>> rows, IEnumerable<string> inputCandidates, IEnumerable<string> outputCandidates, int maxScanRows)
-    {
-        var inputNorm = inputCandidates.Select(NormalizeName).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-        var outputNorm = outputCandidates.Select(NormalizeName).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        => HeaderMatch.FindHeaderRow(rows, maxScanRows, inputCandidates, outputCandidates);
 
-        for (int rowIdx = 0; rowIdx < Math.Min(maxScanRows, rows.Count); rowIdx++)
-        {
-            var values = rows[rowIdx]
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(NormalizeName)
-                .ToList();
-
-            bool hasInput = inputNorm.Any(candidate => values.Any(cell => cell == candidate));
-            bool hasOutput = outputNorm.Any(candidate => values.Any(cell => cell == candidate));
-
-            if (hasInput && hasOutput)
-                return rowIdx;
-        }
-
-        return -1;
-    }
-
+    // 헤더 이름 변형 대응(정확 -> 접두 -> 부분 일치)은 HeaderMatch가 담당한다.
     private static string? FindBestMatchingColumn(IEnumerable<string> columns, IEnumerable<string> candidates)
-    {
-        var map = columns.ToDictionary(NormalizeName, x => x, StringComparer.OrdinalIgnoreCase);
+        => HeaderMatch.FindName(columns, candidates);
 
-        foreach (var candidate in candidates)
-        {
-            var key = NormalizeName(candidate);
-            if (map.TryGetValue(key, out var actual))
-                return actual;
-        }
-
-        return null;
-    }
-
-    private static string NormalizeName(string? name)
-    {
-        var s = (name ?? string.Empty).Trim().ToLowerInvariant();
-        foreach (var ch in new[] { " ", "_", "[", "]", "(", ")", "-", "/" })
-            s = s.Replace(ch, string.Empty);
-        return s;
-    }
+    // 정규화 규칙은 HeaderMatch 한 곳에서만 관리한다.
+    private static string NormalizeName(string? name) => HeaderMatch.Normalize(name);
 
     private static bool TryParseFlexibleDouble(string? s, out double value)
-    {
-        if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out value))
-            return true;
-        if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out value))
-            return true;
-        return false;
-    }
+        => HeaderMatch.TryParseNumber(s, out value);
 }

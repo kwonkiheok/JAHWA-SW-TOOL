@@ -7,7 +7,8 @@ public static class SettlingMetrics
     /// <summary>
     /// 시계열에서 Settling Time/Overshoot를 계산합니다.
     /// target이 없으면(Robocube) 구간 후반 tailFraction 비율의 평균을 steady-state 목표값으로 가정합니다.
-    /// SettlingTime은 tolerance band(±toleranceBand)를 벗어난 마지막 시점 이후 최초로 계속 band 안에 머무는 시각입니다.
+    /// SettlingTime은 tolerance band(±toleranceBand)를 벗어난 마지막 시점(그 이후로는 계속 band 안에 머무름) 기준입니다.
+    /// (설비 측정값과 정의를 맞추기 위해 "벗어난 마지막 시점의 다음 샘플"이 아니라 "벗어난 마지막 시점 그 자체"를 사용합니다.)
     /// judgeStartTimeMs 이전 구간(스텝 트리거 전 baseline)은 판정에서 제외하고, SettlingTime/Overshoot는
     /// 그 시점을 t=0 기준으로 계산합니다(Robocube는 스텝 트리거가 항상 151ms에 있음).
     /// Overshoot는 이동 방향 기준으로 target을 넘어 튀어나간 만큼만 잽니다 — 출발점~target 거리(변위)는
@@ -42,8 +43,10 @@ public static class SettlingMetrics
                 lastOutside = i;
         }
 
-        int settleIndex = Math.Max(judgeStartIndex, Math.Min(lastOutside + 1, n - 1));
-        double settlingTimeMs = timeMs[settleIndex] - t0;
+        // lastOutside < judgeStartIndex면 트리거 이후 한 번도 band를 벗어난 적이 없다는 뜻 → 즉시 정착(0ms).
+        double settlingTimeMs = lastOutside < judgeStartIndex
+            ? 0.0
+            : timeMs[Math.Min(lastOutside, n - 1)] - t0;
 
         // Overshoot = target을 넘어 튀어나간 만큼(진행 방향 기준)만 잰다. 출발점~target 거리(=변위)는
         // "아직 도달 전"일 뿐 overshoot가 아니므로 제외한다. settleIndex가 아니라 트리거 이후 전체 구간을
