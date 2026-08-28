@@ -72,7 +72,7 @@ static string Name(string p) => Path.GetFileName(p);
     {
         try
         {
-            var pts = BodeCsvReader.Read(f, FraDataType.AKM);
+            var pts = BodeCsvReader.Read(f, FraDataTypeRegistry.Get("AKM"));
             var m = BodeMetrics.Extract(pts, useCrossGuard: false);
             var g10 = FraHelpers.GainNearestAtHz(pts, 10.0);
             Line("FRA", "AKM", Name(f),

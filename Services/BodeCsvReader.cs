@@ -7,7 +7,7 @@ public sealed record BodePoint(double FrequencyHz, double GainDb, double PhaseDe
 
 public static class BodeCsvReader
 {
-    public static List<BodePoint> Read(string csvPath, FraDataType dataType)
+    public static List<BodePoint> Read(string csvPath, IFraDataTypeHandler dataType)
     {
         var lines = File.ReadAllLines(csvPath);
         if (lines.Length == 0) return [];
@@ -25,10 +25,9 @@ public static class BodeCsvReader
             return Parse(lines, d, first, 0, 1, 2);
 
         var headers = firstCells.ToArray();
-        var definition = FraDataTypeRegistry.Get(dataType);
-        int fi = Find(headers, definition.FrequencyHeaders);
-        int gi = Find(headers, definition.GainHeaders);
-        int pi = Find(headers, definition.PhaseHeaders);
+        int fi = Find(headers, dataType.FrequencyHeaders);
+        int gi = Find(headers, dataType.GainHeaders);
+        int pi = Find(headers, dataType.PhaseHeaders);
 
         if (fi < 0 || gi < 0 || pi < 0) { fi = 0; gi = 1; pi = 2; }
 

@@ -225,8 +225,8 @@ public sealed class MainViewModel : ViewModelBase
 
     public ObservableCollection<string> InspectionOptions { get; } = new() { "FRA", "DC SENSITIVITY", "SCAN", "SETTLING TIME", "TILT", "SINE WAVE", "CIRCLE TEST", "SQUARE TEST" };
     public ObservableCollection<string> FraModeOptions { get; } = new() { "OPEN LOOP", "PLANT" };
-    public ObservableCollection<FraDataTypeDefinition> FraDataTypeOptions { get; } =
-        new(FraDataTypeRegistry.Definitions);
+    public ObservableCollection<IFraDataTypeHandler> FraDataTypeOptions { get; } =
+        new(FraDataTypeRegistry.All);
     public ObservableCollection<FraPhaseOption> FraPhaseOptions { get; } = new()
     {
         new("Non-Inverted", false),
@@ -258,8 +258,8 @@ public sealed class MainViewModel : ViewModelBase
     private string? _selectedFraMode;
     public string? SelectedFraMode { get => _selectedFraMode; set { _selectedFraMode = value; OnPropertyChanged(); } }
 
-    private FraDataTypeDefinition? _selectedFraDataType;
-    public FraDataTypeDefinition? SelectedFraDataType
+    private IFraDataTypeHandler? _selectedFraDataType;
+    public IFraDataTypeHandler? SelectedFraDataType
     {
         get => _selectedFraDataType;
         set
@@ -798,7 +798,7 @@ public sealed class MainViewModel : ViewModelBase
             var outDir = Path.Combine(outRoot, "FRA");
             Directory.CreateDirectory(outDir);
 
-            var dataType = SelectedFraDataType?.DataType ?? FraDataType.Auto;
+            var dataType = SelectedFraDataType ?? FraDataTypeRegistry.Get(null);
             var loaded = new List<(string file, List<BodePoint> rawPts, List<BodePoint> processedPts, BodeMetricsResult m, double? g10)>();
 
             PlotFiles.Add(new PlotFileItem("ALL OVERLAY", "__ALL_OVERLAY__", Array.Empty<BodePoint>(), isAllOverlayItem: true));
