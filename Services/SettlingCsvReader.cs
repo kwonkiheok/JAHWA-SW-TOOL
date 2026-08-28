@@ -5,8 +5,6 @@ using Microsoft.VisualBasic.FileIO;
 
 namespace JahwaInspector.Light.Services;
 
-public enum SettlingVendor { DW, Robocube, KStar, Anosys }
-
 public sealed record SettlingSeries(
     string Label,
     IReadOnlyList<double> TimeMs,
@@ -15,34 +13,9 @@ public sealed record SettlingSeries(
 
 public static class SettlingCsvReader
 {
-    public static IReadOnlyList<SettlingSeries> Read(string path, SettlingVendor vendor)
-        => vendor switch
-        {
-            SettlingVendor.DW => ReadDw(path),
-            SettlingVendor.Robocube => ReadRobocube(path),
-            SettlingVendor.KStar => ReadKStar(path),
-            SettlingVendor.Anosys => ReadAnosys(path),
-            _ => throw new ArgumentOutOfRangeException(nameof(vendor)),
-        };
-
-    // Import 시 찾을 파일 확장자. K-star만 xlsx, 나머지는 csv.
-    public static string FileSearchPattern(SettlingVendor vendor)
-        => vendor == SettlingVendor.KStar ? "*.xlsx" : "*.csv";
-
-    // 스텝 트리거 시점(ms). Robocube/K-star는 기록 시작 전에 baseline이 섞여 있어 그 이전 구간은
-    // 판정에서 제외해야 한다 — Robocube는 항상 151ms, K-star는 Settling_Group 참고값 역산 결과 약 8ms.
-    // DW는 기록이 트리거 시점(0ms)부터 시작하므로 보정이 필요 없다.
-    public static double JudgeStartTimeMs(SettlingVendor vendor)
-        => vendor switch
-        {
-            SettlingVendor.Robocube => 151,
-            SettlingVendor.KStar => 8,
-            _ => 0,
-        };
-
     // DW: N줄의 key:value preamble 후 ",Target,X Position,Y Position" 헤더.
     // 첫 컬럼(이름 없음)은 항상 Time 인덱스이므로 후보명 매칭 없이 index 0을 그대로 사용한다.
-    private static IReadOnlyList<SettlingSeries> ReadDw(string csvPath)
+    internal static IReadOnlyList<SettlingSeries> ReadDw(string csvPath)
     {
         var rows = ReadAllRows(csvPath);
         if (rows.Count == 0)
@@ -104,7 +77,7 @@ public static class SettlingCsvReader
     // Robocube: preamble 없이 2행 헤더. 1행 = 그룹 라벨("Start NCode  Step Mum")이 그룹 시작 컬럼에만 있고
     // 나머지는 "Count:k"가 2개씩 짝지어 반복. 2행 = 그룹마다 "Time[ms],Posi[um]×N".
     // 그룹 개수/폭이 파일마다 다르므로 2행에서 "Time[ms]" 등장 위치로 그룹 시작 컬럼을 동적으로 찾는다.
-    private static IReadOnlyList<SettlingSeries> ReadRobocube(string csvPath)
+    internal static IReadOnlyList<SettlingSeries> ReadRobocube(string csvPath)
     {
         var rows = ReadAllRows(csvPath);
         if (rows.Count < 3)
@@ -222,7 +195,7 @@ public static class SettlingCsvReader
     // 컬럼 개수)가 정의돼 있다. Laser 컬럼은 순서대로 조건마다 반복 횟수만큼 소비한다(조건1 → 앞쪽 N개,
     // 조건2 → 다음 N개, ...). 1~1000행만 유효하고 그 뒤는 장비가 버퍼를 재사용해 남은 이전 테스트 잔재라
     // 읽지 않는다. Time[ms] 컬럼이 없어 행 번호 × 0.1ms를 시간축으로 쓴다.
-    private static IReadOnlyList<SettlingSeries> ReadKStar(string xlsxPath)
+    internal static IReadOnlyList<SettlingSeries> ReadKStar(string xlsxPath)
     {
         using var wb = new XLWorkbook(xlsxPath);
         if (!wb.Worksheets.TryGetWorksheet("Group_Data", out var dataWs) ||
@@ -299,7 +272,7 @@ public static class SettlingCsvReader
     // 기록되므로 DW와 같이 JudgeStartTimeMs=0을 그대로 쓴다.
     // Current는 K-star가 "Laser NN"/"Current NN" 쌍에서 Current 컬럼을 무시하는 것과 동일하게 Settling
     // 판정 대상에서 제외한다 — Position 채널만 파싱해서 반환한다.
-    private static IReadOnlyList<SettlingSeries> ReadAnosys(string csvPath)
+    internal static IReadOnlyList<SettlingSeries> ReadAnosys(string csvPath)
     {
         var rows = ReadAllRows(csvPath).Where(r => r.Count > 0).ToList();
         if (rows.Count < 2)

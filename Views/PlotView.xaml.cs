@@ -762,7 +762,7 @@ public partial class PlotView : System.Windows.Controls.UserControl
 
         double defaultToleranceBand = ParseLiveDouble(_vm.SettlingSpec.ToleranceBand) ?? 0;
         double tailFraction = (ParseLiveDouble(_vm.SettlingSpec.TailWindowPercent) ?? 20) / 100.0;
-        double judgeStartTimeMs = SettlingCsvReader.JudgeStartTimeMs(_vm.SelectedSettlingVendorOption?.Vendor ?? SettlingVendor.DW);
+        double judgeStartTimeMs = (_vm.SelectedSettlingVendorOption?.Handler ?? SettlingDataTypeRegistry.Get(null)).JudgeStartTimeMs;
 
         UpdateSettlingGroupSelectorItems(groups);
 

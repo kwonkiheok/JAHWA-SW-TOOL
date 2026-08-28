@@ -233,18 +233,16 @@ public sealed class MainViewModel : ViewModelBase
         new("Inverted", true),
     };
 
-    public sealed record SettlingVendorOption(string Name, SettlingVendor Vendor)
+    // 설비사 목록은 SettlingDataTypeRegistry 한 곳에서만 관리한다.
+    // 다른 검사(SCAN/TILT/SINE/CIRCLE/SQUARE/DC)와 동일한 방식.
+    public sealed record SettlingVendorOption(ISettlingDataTypeHandler Handler)
     {
-        public override string ToString() => Name;
+        public string Name => Handler.Name;
+        public override string ToString() => Handler.Name;
     }
 
-    public ObservableCollection<SettlingVendorOption> SettlingVendorOptions { get; } = new()
-    {
-        new("DW", SettlingVendor.DW),
-        new("Robocube", SettlingVendor.Robocube),
-        new("K-star", SettlingVendor.KStar),
-        new("Anosys", SettlingVendor.Anosys),
-    };
+    public ObservableCollection<SettlingVendorOption> SettlingVendorOptions { get; } =
+        new(SettlingDataTypeRegistry.All.Select(h => new SettlingVendorOption(h)));
 
     private SettlingVendorOption? _selectedSettlingVendorOption;
     public SettlingVendorOption? SelectedSettlingVendorOption
@@ -1988,7 +1986,7 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        var files = Directory.GetFiles(ImportedFolder, SettlingCsvReader.FileSearchPattern(SelectedSettlingVendorOption.Vendor), SearchOption.TopDirectoryOnly);
+        var files = Directory.GetFiles(ImportedFolder, SelectedSettlingVendorOption.Handler.FileSearchPattern, SearchOption.TopDirectoryOnly);
         Array.Sort(files, (a, b) => NaturalCompare(Path.GetFileName(a), Path.GetFileName(b)));
 
         if (!EnsureFilesToProcess("SETTLING TIME", files))
@@ -2008,7 +2006,7 @@ public sealed class MainViewModel : ViewModelBase
             var outDir = Path.Combine(outRoot, "SETTLING TIME");
             Directory.CreateDirectory(outDir);
 
-            var vendor = SelectedSettlingVendorOption.Vendor;
+            var dataType = SelectedSettlingVendorOption.Handler;
             double toleranceBand = ParseSpecNumber(SettlingSpec.ToleranceBand) ?? 0;
             double tailFraction = (ParseSpecNumber(SettlingSpec.TailWindowPercent) ?? 20) / 100.0;
 
@@ -2019,10 +2017,10 @@ public sealed class MainViewModel : ViewModelBase
                 var file = files[i];
                 try
                 {
-                    var seriesList = SettlingCsvReader.Read(file, vendor);
+                    var seriesList = dataType.Read(file);
                     string fileName = Path.GetFileName(file);
                     var grouped = GroupSettlingSeries(seriesList);
-                    var groupMetrics = BuildSettlingGroupMetrics(grouped, toleranceBand, tailFraction, vendor);
+                    var groupMetrics = BuildSettlingGroupMetrics(grouped, toleranceBand, tailFraction, dataType);
                     var rows = BuildSettlingRowsForFile(fileName, groupMetrics);
 
                     foreach (var r in rows)
@@ -2111,9 +2109,9 @@ public sealed class MainViewModel : ViewModelBase
         List<(string GroupLabel, List<SettlingSeries> Series)> grouped,
         double defaultToleranceBand,
         double tailFraction,
-        SettlingVendor vendor)
+        ISettlingDataTypeHandler dataType)
     {
-        double judgeStartTimeMs = SettlingCsvReader.JudgeStartTimeMs(vendor);
+        double judgeStartTimeMs = dataType.JudgeStartTimeMs;
         var result = new List<SettlingGroupPlotData>();
 
         foreach (var (label, series) in grouped)
@@ -2218,14 +2216,14 @@ public sealed class MainViewModel : ViewModelBase
         double toleranceBand = ParseSpecNumber(SettlingSpec.ToleranceBand) ?? 0;
         double tailFraction = (ParseSpecNumber(SettlingSpec.TailWindowPercent) ?? 20) / 100.0;
 
-        var vendor = SelectedSettlingVendorOption?.Vendor ?? SettlingVendor.DW;
+        var dataType = SelectedSettlingVendorOption?.Handler ?? SettlingDataTypeRegistry.Get(null);
         var selectedFile = SelectedSettlingRow?.FileName;
         SettlingResults.Clear();
 
         foreach (var item in PlotFiles.Where(p => p.IsSettling))
         {
             var grouped = item.SettlingGroups.Select(g => (g.GroupLabel, Series: g.Series.ToList())).ToList();
-            var groupMetrics = BuildSettlingGroupMetrics(grouped, toleranceBand, tailFraction, vendor);
+            var groupMetrics = BuildSettlingGroupMetrics(grouped, toleranceBand, tailFraction, dataType);
             var rows = BuildSettlingRowsForFile(item.FileName, groupMetrics);
             foreach (var r in rows)
                 SettlingResults.Add(r);
@@ -2927,12 +2925,12 @@ public sealed class MainViewModel : ViewModelBase
 
         if (item.IsSettling)
         {
-            var vendor = SelectedSettlingVendorOption?.Vendor ?? SettlingVendor.DW;
+            var dataType = SelectedSettlingVendorOption?.Handler ?? SettlingDataTypeRegistry.Get(null);
             double band = ParseSpecNumber(SettlingSpec.ToleranceBand) ?? 0;
             double tailFraction = (ParseSpecNumber(SettlingSpec.TailWindowPercent) ?? 20) / 100.0;
 
             var grouped = item.SettlingGroups.Select(g => (g.GroupLabel, Series: g.Series.ToList())).ToList();
-            var groupMetrics = BuildSettlingGroupMetrics(grouped, band, tailFraction, vendor);
+            var groupMetrics = BuildSettlingGroupMetrics(grouped, band, tailFraction, dataType);
             foreach (var group in groupMetrics)
             {
                 string gpath = Path.Combine(plotDir, $"{stem}_{SanitizeFileName(group.GroupLabel)}.png");

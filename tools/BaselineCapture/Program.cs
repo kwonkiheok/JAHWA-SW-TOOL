@@ -115,20 +115,21 @@ foreach (var (dtName, dir, inCand, outCand) in new[]
 }
 
 // ── SETTLING ─────────────────────────────────────────────────────────────────
-foreach (var (vendor, dir) in new[]
+foreach (var (dtName, dir) in new[]
 {
-    (SettlingVendor.Robocube, Path.Combine(dataRoot, @"AF\Settling\Robocube")),
-    (SettlingVendor.Robocube, Path.Combine(dataRoot, @"OIS\Settling\Robocube")),
-    (SettlingVendor.DW,       Path.Combine(dataRoot, @"OIS\Settling\DW")),
-    (SettlingVendor.Anosys,   Path.Combine(dataRoot, @"AF\Settling\Anosys")),
+    ("Robocube", Path.Combine(dataRoot, @"AF\Settling\Robocube")),
+    ("Robocube", Path.Combine(dataRoot, @"OIS\Settling\Robocube")),
+    ("DW",       Path.Combine(dataRoot, @"OIS\Settling\DW")),
+    ("Anosys",   Path.Combine(dataRoot, @"AF\Settling\Anosys")),
 })
 {
-    double judgeStart = SettlingCsvReader.JudgeStartTimeMs(vendor);
-    foreach (var f in Files(dir, SettlingCsvReader.FileSearchPattern(vendor)))
+    var handler = SettlingDataTypeRegistry.Get(dtName);
+    double judgeStart = handler.JudgeStartTimeMs;
+    foreach (var f in Files(dir, handler.FileSearchPattern))
     {
         try
         {
-            var series = SettlingCsvReader.Read(f, vendor);
+            var series = handler.Read(f);
             var parts = new List<string> { $"series={series.Count}" };
             // 계열이 많으면 출력이 폭증하므로 앞 6개만 (파일 순서는 리더가 결정 — 결정적)
             foreach (var s in series.Take(6))
@@ -137,10 +138,10 @@ foreach (var (vendor, dir) in new[]
                     toleranceBand: 100, tailFraction: 0.2, judgeStartTimeMs: judgeStart);
                 parts.Add($"[{s.Label}|n={s.Value.Count} T={N(r.Target)} St={N(r.SettlingTimeMs)} Ov={N(r.Overshoot)}]");
             }
-            Line("SETTLING", vendor.ToString(), Name(f), string.Join(" ", parts));
+            Line("SETTLING", dtName, Name(f), string.Join(" ", parts));
             okCount++;
         }
-        catch (Exception ex) { Fail("SETTLING", vendor.ToString(), Name(f), ex); }
+        catch (Exception ex) { Fail("SETTLING", dtName, Name(f), ex); }
     }
 }
 
