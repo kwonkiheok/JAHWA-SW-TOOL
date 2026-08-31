@@ -3222,11 +3222,20 @@ public sealed class MainViewModel : ViewModelBase
 
         if (specMaxErr is double maxErrSpec)
         {
-            if (row.MaxErrX is double maxErrX && Math.Abs(maxErrX) > Math.Abs(maxErrSpec))
-                reasons.Add($"X:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            // 값이 없으면(N/A) 계산에 실패한 것이므로 NG 로 본다 — FRA/SCAN/SETTLING 과 같은 규칙.
+            if (row.MaxErrX is double maxErrX)
+            {
+                if (Math.Abs(maxErrX) > Math.Abs(maxErrSpec))
+                    reasons.Add($"X:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            }
+            else reasons.Add("MaxErrX=N/A");
 
-            if (row.MaxErrY is double maxErrY && Math.Abs(maxErrY) > Math.Abs(maxErrSpec))
-                reasons.Add($"Y:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            if (row.MaxErrY is double maxErrY)
+            {
+                if (Math.Abs(maxErrY) > Math.Abs(maxErrSpec))
+                    reasons.Add($"Y:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            }
+            else reasons.Add("MaxErrY=N/A");
         }
 
         return reasons.Count == 0 ? ("PASS", "") : ("NG", string.Join(", ", reasons));
@@ -3289,11 +3298,20 @@ public sealed class MainViewModel : ViewModelBase
 
         if (specMaxErr is double maxErrSpec)
         {
-            if (row.MaxErrX is double maxErrX && Math.Abs(maxErrX) > Math.Abs(maxErrSpec))
-                reasons.Add($"X:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            // 값이 없으면(N/A) 계산에 실패한 것이므로 NG 로 본다 — FRA/SCAN/SETTLING 과 같은 규칙.
+            if (row.MaxErrX is double maxErrX)
+            {
+                if (Math.Abs(maxErrX) > Math.Abs(maxErrSpec))
+                    reasons.Add($"X:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            }
+            else reasons.Add("MaxErrX=N/A");
 
-            if (row.MaxErrY is double maxErrY && Math.Abs(maxErrY) > Math.Abs(maxErrSpec))
-                reasons.Add($"Y:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            if (row.MaxErrY is double maxErrY)
+            {
+                if (Math.Abs(maxErrY) > Math.Abs(maxErrSpec))
+                    reasons.Add($"Y:|MaxErr|>{Math.Abs(maxErrSpec):0.###}");
+            }
+            else reasons.Add("MaxErrY=N/A");
         }
 
         return reasons.Count == 0 ? ("PASS", "") : ("NG", string.Join(", ", reasons));
@@ -3358,24 +3376,57 @@ public sealed class MainViewModel : ViewModelBase
         double? specSettling = ParseSpecNumber(SquareSpec.SpecMaxSettlingTimeMs);
         double? specOvershoot = ParseSpecNumber(SquareSpec.SpecMaxOvershoot);
 
+        // SQUARE 는 장비마다 채우는 필드가 정반대다.
+        //   AKM : 통합(MaxSettlingMs/MaxOvershoot) 사용, Up/Down 은 설계상 null
+        //   DW  : Up/Down 사용, 통합은 설계상 null
+        // 그래서 필드마다 null 을 NG 로 보면 모든 파일이 NG 가 된다.
+        // 대신 "그 지표 값이 하나도 없을 때"만 계산 실패로 보고 NG 처리한다.
         if (specSettling is double settlingSpec)
         {
-            if (row.MaxSettlingMs is double sc && Math.Abs(sc) > Math.Abs(settlingSpec))
-                reasons.Add($"Settling>{Math.Abs(settlingSpec):0.###}ms");
-            if (row.MaxSettlingUpMs is double su && Math.Abs(su) > Math.Abs(settlingSpec))
-                reasons.Add($"Up:Settling>{Math.Abs(settlingSpec):0.###}ms");
-            if (row.MaxSettlingDownMs is double sd && Math.Abs(sd) > Math.Abs(settlingSpec))
-                reasons.Add($"Down:Settling>{Math.Abs(settlingSpec):0.###}ms");
+            bool anySettling = false;
+            if (row.MaxSettlingMs is double sc)
+            {
+                anySettling = true;
+                if (Math.Abs(sc) > Math.Abs(settlingSpec))
+                    reasons.Add($"Settling>{Math.Abs(settlingSpec):0.###}ms");
+            }
+            if (row.MaxSettlingUpMs is double su)
+            {
+                anySettling = true;
+                if (Math.Abs(su) > Math.Abs(settlingSpec))
+                    reasons.Add($"Up:Settling>{Math.Abs(settlingSpec):0.###}ms");
+            }
+            if (row.MaxSettlingDownMs is double sd)
+            {
+                anySettling = true;
+                if (Math.Abs(sd) > Math.Abs(settlingSpec))
+                    reasons.Add($"Down:Settling>{Math.Abs(settlingSpec):0.###}ms");
+            }
+            if (!anySettling) reasons.Add("Settling=N/A");
         }
 
         if (specOvershoot is double overshootSpec)
         {
-            if (row.MaxOvershoot is double oc && Math.Abs(oc) > Math.Abs(overshootSpec))
-                reasons.Add($"Overshoot>{Math.Abs(overshootSpec):0.###}");
-            if (row.MaxOvershootUp is double ou && Math.Abs(ou) > Math.Abs(overshootSpec))
-                reasons.Add($"Up:Overshoot>{Math.Abs(overshootSpec):0.###}");
-            if (row.MaxOvershootDown is double od && Math.Abs(od) > Math.Abs(overshootSpec))
-                reasons.Add($"Down:Overshoot>{Math.Abs(overshootSpec):0.###}");
+            bool anyOvershoot = false;
+            if (row.MaxOvershoot is double oc)
+            {
+                anyOvershoot = true;
+                if (Math.Abs(oc) > Math.Abs(overshootSpec))
+                    reasons.Add($"Overshoot>{Math.Abs(overshootSpec):0.###}");
+            }
+            if (row.MaxOvershootUp is double ou)
+            {
+                anyOvershoot = true;
+                if (Math.Abs(ou) > Math.Abs(overshootSpec))
+                    reasons.Add($"Up:Overshoot>{Math.Abs(overshootSpec):0.###}");
+            }
+            if (row.MaxOvershootDown is double od)
+            {
+                anyOvershoot = true;
+                if (Math.Abs(od) > Math.Abs(overshootSpec))
+                    reasons.Add($"Down:Overshoot>{Math.Abs(overshootSpec):0.###}");
+            }
+            if (!anyOvershoot) reasons.Add("Overshoot=N/A");
         }
 
         return reasons.Count == 0 ? ("PASS", "") : ("NG", string.Join(", ", reasons));
@@ -3439,11 +3490,20 @@ public sealed class MainViewModel : ViewModelBase
 
         if (specTilt is double tiltSpec)
         {
-            if (row.PeakTiltUp is double peakUp && Math.Abs(peakUp) > Math.Abs(tiltSpec))
-                reasons.Add($"|PeakUp|>{Math.Abs(tiltSpec):0.###}");
+            // 값이 없으면(N/A) 계산에 실패한 것이므로 NG 로 본다 — FRA/SCAN/SETTLING 과 같은 규칙.
+            if (row.PeakTiltUp is double peakUp)
+            {
+                if (Math.Abs(peakUp) > Math.Abs(tiltSpec))
+                    reasons.Add($"|PeakUp|>{Math.Abs(tiltSpec):0.###}");
+            }
+            else reasons.Add("PeakUp=N/A");
 
-            if (row.PeakTiltDown is double peakDown && Math.Abs(peakDown) > Math.Abs(tiltSpec))
-                reasons.Add($"|PeakDown|>{Math.Abs(tiltSpec):0.###}");
+            if (row.PeakTiltDown is double peakDown)
+            {
+                if (Math.Abs(peakDown) > Math.Abs(tiltSpec))
+                    reasons.Add($"|PeakDown|>{Math.Abs(tiltSpec):0.###}");
+            }
+            else reasons.Add("PeakDown=N/A");
         }
 
         return reasons.Count == 0 ? ("PASS", "") : ("NG", string.Join(", ", reasons));
