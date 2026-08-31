@@ -65,13 +65,69 @@ public static class SettlingCsvReader
         if (time.Count < 2)
             throw new InvalidOperationException("Not enough valid DW Settling data rows.");
 
-        double target = targets[0];
+        // DW 파일은 Target 이 중심 -> 위 -> 중심 -> 아래 -> 중심 으로 바뀌는 사각파다.
+        // 예전에는 targets[0] 하나만 전 구간에 적용해서, 허용범위 밴드가 그래프 한가운데
+        // 그어지고 위/아래 이동 구간이 전부 밴드 밖으로 잡혔다(정착시간 254ms, 오버슈트 401 등).
+        // 설비는 "중심으로 돌아오는 스텝"만 판정하며(헤더 X Settling Index 154/255),
+        // 그 두 스텝이 각각 아래로 복귀(Down)와 위로 복귀(Up)에 해당한다.
+        return SplitReturnSteps(time, targets, xs, ys);
+    }
 
-        return new[]
+    // Target 이 바뀌는 지점마다 구간을 자르고, 중심(첫 Target)으로 돌아오는 스텝만 남긴다.
+    // 이동 방향(스텝 시작값 대비 목표가 큰지)으로 Up/Down 을 구분해 라벨에 넣는다.
+    // 전환 이전 baseline 구간은 트리거가 없어 판정 대상이 아니므로 제외한다
+    // (SquareMetrics.DetectSteps 와 같은 규칙).
+    private static IReadOnlyList<SettlingSeries> SplitReturnSteps(
+        IReadOnlyList<double> time,
+        IReadOnlyList<double> targets,
+        IReadOnlyList<double> xs,
+        IReadOnlyList<double> ys)
+    {
+        int n = time.Count;
+        double home = targets[0];
+
+        var steps = new List<(int Start, int End, double Target)>();
+        int stepStart = -1;
+        double current = targets[0];
+        for (int i = 1; i < n; i++)
         {
-            new SettlingSeries("X", time, xs, target),
-            new SettlingSeries("Y", time, ys, target),
-        };
+            if (targets[i] == current) continue;
+            if (stepStart >= 0) steps.Add((stepStart, i, current));
+            stepStart = i;
+            current = targets[i];
+        }
+        if (stepStart >= 0) steps.Add((stepStart, n, current));
+
+        var result = new List<SettlingSeries>();
+        int upCount = 0, downCount = 0;
+
+        foreach (var (start, end, target) in steps)
+        {
+            if (target != home) continue;              // 중심으로 돌아오는 스텝만
+            if (end - start < 2) continue;
+
+            var segTime = time.Skip(start).Take(end - start).ToList();
+            var segX = xs.Skip(start).Take(end - start).ToList();
+            var segY = ys.Skip(start).Take(end - start).ToList();
+
+            bool isUp = target > xs[start];
+            string dir = isUp ? "Up" : "Down";
+            int idx = isUp ? ++upCount : ++downCount;
+            string suffix = (isUp ? upCount : downCount) > 1 || idx > 1 ? $" #{idx}" : "";
+
+            result.Add(new SettlingSeries($"X {dir}{suffix}", segTime, segX, target));
+            result.Add(new SettlingSeries($"Y {dir}{suffix}", segTime, segY, target));
+        }
+
+        if (result.Count == 0)
+        {
+            // 스텝을 못 찾으면(Target 이 끝까지 일정한 파일) 기존처럼 전 구간을 하나로 본다.
+            double target = targets[0];
+            result.Add(new SettlingSeries("X", time, xs, target));
+            result.Add(new SettlingSeries("Y", time, ys, target));
+        }
+
+        return result;
     }
 
     // Robocube: preamble 없이 2행 헤더. 1행 = 그룹 라벨("Start NCode  Step Mum")이 그룹 시작 컬럼에만 있고

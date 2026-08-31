@@ -43,10 +43,20 @@ public static class SettlingMetrics
                 lastOutside = i;
         }
 
-        // lastOutside < judgeStartIndex면 트리거 이후 한 번도 band를 벗어난 적이 없다는 뜻 → 즉시 정착(0ms).
-        double settlingTimeMs = lastOutside < judgeStartIndex
-            ? 0.0
-            : timeMs[Math.Min(lastOutside, n - 1)] - t0;
+        // 정착 시각 = "허용범위를 마지막으로 벗어난 다음 샘플" = 처음으로 범위에 들어와 계속 머무는 시점.
+        //
+        // 근거: DW SETTLING 파일은 헤더에 허용범위(Settling Tolerance Max/Min = target±100)와
+        // 정답(Settling Index 154/255, Settling Time 4/5)이 함께 적혀 있다. 밴드가 명시돼 있으므로
+        // 정의를 판별할 수 있는데, 실제 데이터에서 밴드에 처음 들어온 index 가 154/255 이고
+        // 스텝 시작(150/250) 기준 4ms/5ms 로 설비값과 정확히 일치한다.
+        //
+        // 주의: 2026-08-28 에 Robocube LOG(SettlingTimeUp 10.000)를 근거로 이 값을 lastOutside 로
+        // 바꾼 적이 있으나 잘못된 판단이었다. Robocube 는 허용범위가 파일에 없어 밴드를 모르는데,
+        // 밴드를 ±1.40~2.10 으로 잡으면 lastOutside 가, ±2.15~3.65 로 잡으면 lastOutside+1 이
+        // 각각 10ms 를 만든다 — 즉 정의를 판별할 근거가 되지 못한다.
+        // 밴드가 명시된 DW 를 기준으로 원래 정의(lastOutside + 1)를 유지한다.
+        int settleIndex = Math.Max(judgeStartIndex, Math.Min(lastOutside + 1, n - 1));
+        double settlingTimeMs = timeMs[settleIndex] - t0;
 
         // Overshoot = target을 넘어 튀어나간 만큼(진행 방향 기준)만 잰다. 출발점~target 거리(=변위)는
         // "아직 도달 전"일 뿐 overshoot가 아니므로 제외한다. settleIndex가 아니라 트리거 이후 전체 구간을
