@@ -55,7 +55,19 @@ public static class ScanMetrics
             return new ScanRangeMetrics(range.MinInput, range.MaxInput, hys, double.NaN);
 
         double slope = (yMax - yMin) / dx;
-        double li = up.Min(p => p.y - (yMin + slope * (p.x - range.MinInput)));
+
+        // LI는 기준선에서 가장 많이 벗어난 편차(부호 유지)를 쓴다.
+        // 예전에는 Min() 이라 "기준선 아래로 처진" 쪽만 봤고, 위로 볼록하게 휜 파일은
+        // 비선형이 커도 LI가 작게 나왔다. 실제 AKM 샘플(#1_result_scan.csv)에서
+        // 설비가 기록한 Linearity 1.9 가 위쪽 편차(+1.9458)였는데 기존 코드는 -1.0167 을 냈다.
+        // 판정도 Math.Abs(li) 로 절대값 비교를 하므로 계산도 절대값 기준이어야 앞뒤가 맞는다.
+        //
+        // 범위는 Up 만 본다(Robocube는 Up+Down). AKM에 Up+Down을 적용하면 같은 샘플에서
+        // 2.98 이 나와 설비 기록값과 어긋나므로, 선택 규칙만 맞추고 대상 범위는 유지한다.
+        double li = up
+            .Select(p => p.y - (yMin + slope * (p.x - range.MinInput)))
+            .OrderByDescending(Math.Abs)
+            .First();
 
         return new ScanRangeMetrics(range.MinInput, range.MaxInput, hys, li);
     }

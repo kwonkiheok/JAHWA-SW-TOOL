@@ -24,7 +24,7 @@ public sealed class AkmScanDataTypeHandler : IScanDataTypeHandler
     public string HeaderRuleDescription => "Fixed header match";
     public string RangeRuleDescription => "Configured range";
     public string HysRuleDescription => "Max absolute difference between Up and Down output at same input";
-    public string LiRuleDescription => "Signed minimum Up output error from reference line";
+    public string LiRuleDescription => "Signed largest absolute Up output error from endpoint reference line";
     public bool UsesAutomaticRange => false;
 
     public ScanReadResult Read(string file, IEnumerable<string> inputCandidates, IEnumerable<string> outputCandidates)
