@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 /// <summary>
 /// System.Drawing(GDI+)으로 그래프 PNG를 직접 그리는 렌더러.

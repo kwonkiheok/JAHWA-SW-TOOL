@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 /// <summary>
 /// FRA(Bode Plot) 데이터 타입(설비사) 핸들러.

@@ -7,7 +7,7 @@ using System.Linq;
 using ScottPlot;
 using ScottPlot.TickGenerators;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public static class PlotImageExporter
 {

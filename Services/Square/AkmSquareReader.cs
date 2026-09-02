@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.IO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 // AKM Square 로그: 헤더 메타데이터(amplitude, tolerance(%amp))에 이어
 // "time[ms],pos,read_vt,hall,read_mv" 시계열. pos(목표)가 중심↔±amplitude를 반복하는 사각파.

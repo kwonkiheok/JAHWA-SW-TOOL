@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.IO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed record BodePoint(double FrequencyHz, double GainDb, double PhaseDeg);
 

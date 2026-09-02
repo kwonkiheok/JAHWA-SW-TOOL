@@ -1,7 +1,7 @@
-namespace JahwaInspector.Light.ViewModels;
+namespace MeasureHub.ViewModels;
 
 using System.Collections.ObjectModel;
-using JahwaInspector.Light.Services;
+using MeasureHub.Services;
 
 public sealed class EmptySpecViewModel : ViewModelBase { }
 

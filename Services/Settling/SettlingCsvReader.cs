@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Microsoft.VisualBasic.FileIO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed record SettlingSeries(
     string Label,

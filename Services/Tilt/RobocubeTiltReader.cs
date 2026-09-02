@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed class TiltReadResult
 {

@@ -1,4 +1,4 @@
-# JahwaInspector.Light 작업 현황
+# MeasureHub 작업 현황
 
 최종 갱신: 2026-08-28
 
@@ -265,7 +265,7 @@
 - 사용자 확인에 따라 채널 1,2=Position(위치), 3,4=Current(전류)로 확정. Current는 K-star가 Current 컬럼을 무시하는 것과 동일한 방식으로 Settling 판정 대상에서 제외하기로 결정
 - `ReadAnosys`를 Position 채널만 파싱하도록 수정(Current 채널 파싱 자체를 생략), 라벨을 `Ch1..N` → `Position1`/`Position2`로 변경
 - 수정 파일: `Services/SettlingCsvReader.cs`
-- 재검증: 앱 실행 중 `JahwaInspector.Light.exe`(PID 20692)가 산출물 파일을 잠그고 있어 빌드가 1차 실패 → 사용자 승인 받아 프로세스 종료 후 재빌드 성공(오류 0개)
+- 재검증: 앱 실행 중 `MeasureHub.exe`(PID 20692)가 산출물 파일을 잠그고 있어 빌드가 1차 실패 → 사용자 승인 받아 프로세스 종료 후 재빌드 성공(오류 0개)
 - 임시 콘솔 하네스로 5개 CSV 재실행: 파일당 `Position1`/`Position2` 2개 시리즈만 반환됨(Current 제외 확인), Settling Time/Overshoot 값은 이전과 동일하게 정상 계산됨
 - 남은 작업: 적정 Tolerance Band 기본값/조건별 값 산정(Position 채널의 실측 변위 기준), `settling.csv` 중복 정리, DW 실측 검증, Robocube 기본값 재검토
 

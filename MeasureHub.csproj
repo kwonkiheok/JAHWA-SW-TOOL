@@ -18,7 +18,7 @@
            x.x.1  버그 수정만
     -->
     <Version>1.0.0</Version>
-    <AssemblyName>JahwaInspector.Light.$(Version)</AssemblyName>
+    <AssemblyName>MeasureHub.$(Version)</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\jahwa_header.png" />

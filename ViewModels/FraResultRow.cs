@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.ViewModels;
+namespace MeasureHub.ViewModels;
 
 public sealed class FraResultRow
 {

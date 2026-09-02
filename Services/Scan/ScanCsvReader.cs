@@ -2,7 +2,7 @@
 
 using System.IO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed record ScanRangeHint(double MinInput, double MaxInput);
 

@@ -1,6 +1,6 @@
-using JahwaInspector.Light.Services;
+using MeasureHub.Services;
 
-namespace JahwaInspector.Light.ViewModels;
+namespace MeasureHub.ViewModels;
 
 // tuple 시그니처가 Sinewave 생성자(7개 double 튜플)와 겹쳐 오버로드 모호성 오류(CS0111)가 나므로 별도 타입 사용.
 public sealed record CircleSample(double Time, double ReadVtX, double HallX, double DiffX, double ReadVtY, double HallY, double DiffY);

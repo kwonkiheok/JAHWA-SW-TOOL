@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 // SQUARE TEST 공용 계산: Target이 바뀌는 지점마다 스텝을 자동으로 잘라서(전환 이전 baseline 구간은
 // 트리거가 없어 판정 대상이 아니므로 제외), 각 스텝의 트리거 시점을 t=0으로 잡아

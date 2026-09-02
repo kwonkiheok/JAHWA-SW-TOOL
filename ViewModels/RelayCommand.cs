@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace JahwaInspector.Light.ViewModels;
+namespace MeasureHub.ViewModels;
 
 public sealed class RelayCommand : ICommand
 {

@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-namespace JahwaInspector.Light.Converters;
+namespace MeasureHub.Converters;
 
 public sealed class BoolToVisibilityConverter : IValueConverter
 {

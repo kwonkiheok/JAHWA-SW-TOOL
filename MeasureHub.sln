@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.3.11512.155 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JahwaInspector.Light", "JahwaInspector.Light.csproj", "{0D503B1F-FE45-7D0F-160E-5F815F7069C3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MeasureHub", "MeasureHub.csproj", "{0D503B1F-FE45-7D0F-160E-5F815F7069C3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

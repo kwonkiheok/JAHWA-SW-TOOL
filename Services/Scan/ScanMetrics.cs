@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed record ScanRangeDefinition(double MinInput, double MaxInput);
 public sealed record ScanRangeMetrics(double MinInput, double MaxInput, double Hys, double Linearity);

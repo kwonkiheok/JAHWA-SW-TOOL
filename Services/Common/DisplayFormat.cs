@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 /// <summary>
 /// 화면·CSV·그래프에서 공통으로 쓰는 표시 형식.

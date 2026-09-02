@@ -1,8 +1,8 @@
-﻿<Application x:Class="JahwaInspector.Light.App"
+﻿<Application x:Class="MeasureHub.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:conv="clr-namespace:JahwaInspector.Light.Converters"
-             xmlns:vm="clr-namespace:JahwaInspector.Light.ViewModels"
+             xmlns:conv="clr-namespace:MeasureHub.Converters"
+             xmlns:vm="clr-namespace:MeasureHub.ViewModels"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>

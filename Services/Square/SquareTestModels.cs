@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 // 파일 하나에 축이 1개(AKM)거나 여러 개(DW: X/Y) 있을 수 있어 리스트로 둔다.
 // ToleranceBand는 더 이상 파일 헤더에서 고정값을 가져오지 않고, 사용자가 화면에서 설정한

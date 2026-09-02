@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed record BodeMetricsResult(
     double? GainMarginDb,

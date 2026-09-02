@@ -1,7 +1,7 @@
 using System.Data;
 using Microsoft.VisualBasic.FileIO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed class DcSensitivityReadResult
 {

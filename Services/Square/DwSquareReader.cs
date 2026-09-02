@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.VisualBasic.FileIO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 // DW Square 로그: preamble(Settling Tolerance Max/Min 등) 후 ",Target,X Position,Y Position" 헤더.
 // Target이 반복적으로 바뀌는 사각파이며, X/Y 두 축이 한 파일에 들어있다(SINE WAVE DW와 동일한 구조).

@@ -1,13 +1,13 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
-using JahwaInspector.Light.Services;
-using JahwaInspector.Light.ViewModels;
+using MeasureHub.Services;
+using MeasureHub.ViewModels;
 using ScottPlot;
 using ScottPlot.TickGenerators;
 using ScottPlot.WPF;
 
-namespace JahwaInspector.Light.Views;
+namespace MeasureHub.Views;
 
 public partial class PlotView : System.Windows.Controls.UserControl
 {

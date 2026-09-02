@@ -1,4 +1,4 @@
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 public sealed record TiltMetricsResult(double PeakTiltUp, double PeakTiltDown, double PeakTilt);
 

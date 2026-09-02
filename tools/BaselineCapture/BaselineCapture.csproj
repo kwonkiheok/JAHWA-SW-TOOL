@@ -9,6 +9,6 @@
     <RootNamespace>BaselineCapture</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\JahwaInspector.Light.csproj" />
+    <ProjectReference Include="..\..\MeasureHub.csproj" />
   </ItemGroup>
 </Project>

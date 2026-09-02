@@ -8,9 +8,9 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using ClosedXML.Excel;
 using Microsoft.Win32;
-using JahwaInspector.Light.Services;
+using MeasureHub.Services;
 
-namespace JahwaInspector.Light.ViewModels;
+namespace MeasureHub.ViewModels;
 
 public sealed class MainViewModel : ViewModelBase
 {

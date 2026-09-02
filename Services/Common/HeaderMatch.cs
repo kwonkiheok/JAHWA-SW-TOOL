@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 /// <summary>
 /// 설비사·장비 버전에 따라 컬럼 헤더 이름이 조금씩 달라지는 문제에 대응하는 공용 헤더 매칭 유틸리티.

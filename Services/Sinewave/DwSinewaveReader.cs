@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.IO;
 
-namespace JahwaInspector.Light.Services;
+namespace MeasureHub.Services;
 
 // DW의 신형 Sine Wave 로그 포맷: 시간, Target/Feedback/Position(12bit) 컬럼을 X/Y 모두 한 줄에 기록.
 // Diff는 파일에 없으므로 사용자 확정에 따라 Target 12bit - Position 12bit로 직접 계산한다.

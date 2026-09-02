@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Text;
-using JahwaInspector.Light.Services;
+using MeasureHub.Services;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  기준선 캡처 (Baseline Capture)
@@ -249,7 +249,7 @@ foreach (var (dtName, dir, inCand, outCand) in new[]
 
 // ── 저장 ─────────────────────────────────────────────────────────────────────
 var header = new StringBuilder();
-header.AppendLine("# JahwaInspector.Light 계산 결과 기준선");
+header.AppendLine("# MeasureHub 계산 결과 기준선");
 header.AppendLine("# 형식: 검사<TAB>데이터타입<TAB>파일명<TAB>지표");
 header.AppendLine($"# 성공 {okCount}건 / 실패 {errCount}건");
 header.AppendLine("# ※ 이 파일은 리팩터링 전후 비교용이며, 차이가 0이어야 한다.");
