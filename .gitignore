@@ -27,3 +27,7 @@ packages/
 
 # WPF 빌드 중 자동 생성되는 임시 프로젝트 파일
 *_wpftmp.csproj
+
+# 게시 결과물(단일 exe 185MB)은 저장소에 넣지 않는다
+배포/
+publish/
