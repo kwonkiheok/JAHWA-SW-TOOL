@@ -4,7 +4,9 @@ REM ─────────────────────────�
 REM  팀 배포용 exe 만들기 (자체 포함 단일 파일)
 REM
 REM  결과물 : D:\중점추진과제 SW\workspace\배포\MeasureHub\
-REM           MeasureHub.exe  (파일 1개, 약 185MB)
+REM           JahwaMeasureHub.1.0.0.exe  (파일 1개, 약 185MB)
+REM
+REM  파일명의 버전은 MeasureHub.csproj 의 <Version> 값을 따라간다.
 REM
 REM  이 exe 하나만 팀원에게 전달하면 된다.
 REM  받는 PC 에 .NET 8 런타임을 설치하지 않아도 실행된다.
