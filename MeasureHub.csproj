@@ -18,7 +18,9 @@
            x.x.1  버그 수정만
     -->
     <Version>1.0.0</Version>
-    <AssemblyName>MeasureHub.$(Version)</AssemblyName>
+    <!-- 배포 파일명에만 회사명을 붙인다(JahwaMeasureHub.1.0.0.exe).
+         namespace 와 창 제목은 MeasureHub 그대로다. -->
+    <AssemblyName>JahwaMeasureHub.$(Version)</AssemblyName>
 
     <!-- exe 속성 창(마우스 오른쪽 > 속성 > 자세히)에 표시되는 정보.
          지정하지 않으면 AssemblyName 을 그대로 쓰기 때문에 회사명 자리에
