@@ -7,6 +7,18 @@
     <!-- FolderBrowserDialog 등 WinForms 컴포넌트 사용 -->
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- ── 버전 ──────────────────────────────────────────────────────────
+         배포할 때 이 값만 올리면 exe 파일명·속성·오류 로그가 모두 함께 바뀐다.
+         (앱은 GetAppVersion() 으로 이 값을 읽어 오류 로그와 Excel 메타에 기록한다)
+
+         올리는 기준
+           1.x.x  결과가 달라지거나 사용법이 바뀔 때 (판정 기준 변경 등)
+           x.1.x  기능 추가 (새 검사 항목·설비 타입 등), 기존 동작은 유지
+           x.x.1  버그 수정만
+    -->
+    <Version>1.0.0</Version>
+    <AssemblyName>JahwaInspector.Light.$(Version)</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\jahwa_header.png" />

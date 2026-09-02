@@ -13,7 +13,8 @@ cd /d "%~dp0"
 
 echo.
 echo [1/3] 실행 중인 앱 종료
-taskkill /IM JahwaInspector.Light.exe /F >nul 2>&1
+REM 파일명에 버전이 붙으므로 와일드카드로 종료한다 (JahwaInspector.Light.1.0.0.exe 등)
+for /f "tokens=1" %%i in ('tasklist /fi "IMAGENAME eq JahwaInspector.Light.*" /nh 2^>nul ^| findstr /i JahwaInspector') do taskkill /IM "%%i" /F >nul 2>&1
 
 echo [2/3] 게시 중... (2~3분 걸립니다)
 dotnet publish JahwaInspector.Light.csproj -c Release -p:PublishProfile=SingleFile
