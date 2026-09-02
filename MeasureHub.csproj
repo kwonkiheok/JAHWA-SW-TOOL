@@ -19,6 +19,15 @@
     -->
     <Version>1.0.0</Version>
     <AssemblyName>MeasureHub.$(Version)</AssemblyName>
+
+    <!-- exe 속성 창(마우스 오른쪽 > 속성 > 자세히)에 표시되는 정보.
+         지정하지 않으면 AssemblyName 을 그대로 쓰기 때문에 회사명 자리에
+         "MeasureHub.1.0.0" 같은 값이 들어간다. -->
+    <Company>Jahwa Electronics</Company>
+    <Product>MeasureHub</Product>
+    <AssemblyTitle>MeasureHub - 측정 데이터 종합 정리·분석 도구</AssemblyTitle>
+    <Description>측정 데이터 종합 정리·분석 도구</Description>
+    <Copyright>Copyright (c) Jahwa Electronics</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\jahwa_header.png" />
