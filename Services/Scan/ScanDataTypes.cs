@@ -34,7 +34,7 @@ public sealed class AkmScanDataTypeHandler : IScanDataTypeHandler
         => ScanMetrics.ComputeRangeMetrics(read.UpInput, read.UpOutput, read.DownInput, read.DownOutput, range);
 
     public (double[] xs, double[] ys) BuildReferenceLine(ScanReadResult read, ScanRangeDefinition range)
-        => ScanMetrics.BuildReferenceLine(read.UpInput, read.UpOutput, range);
+        => ScanMetrics.BuildReferenceLine(read.UpInput, read.UpOutput, read.DownInput, read.DownOutput, range);
 }
 
 public sealed class RobocubeScanDataTypeHandler : IScanDataTypeHandler
