@@ -1,6 +1,6 @@
 # MeasureHub 작업 현황
 
-최종 갱신: 2026-08-28
+최종 갱신: 2026-09-28
 
 ## 프로젝트 개요
 
@@ -34,6 +34,18 @@
   - 그래프는 ScottPlot Multiplot으로 X축/Y축 패널을 위/아래로 분리, 각 패널 안에서 Posi(target)와 Hall(실제)을 같은 왼쪽 축 스케일로 겹쳐 그리고 Diff는 오른쪽 축(+±Spec 점선)에 표시(최초 구현은 X만 단일 패널이었으나 사용자 피드백으로 X/Y 분리 + Posi/Hall 오버랩 강화)
 
 ## 최근 확인된 작업
+
+- 2026-09-28: DC SENSITIVITY 그래프 이미지 Y축도 0~5000(1000 간격)으로 고정(`DcFixedYTicks`, 단일/오버레이 모두)
+  - 사용자 요청. 이로써 X/Y 모두 고정, 5000 초과 값은 클리핑됨
+
+- 2026-09-28: DC SENSITIVITY 그래프 이미지 X축을 0~5000(1000 간격)으로 고정
+  - 배경: X축이 파일별 데이터 min/max를 `BuildNiceTicks`로 올림해 정해져서, 최대 Input이 4000을 조금만 넘어도
+    축 끝이 5000이 되는 등 파일마다 4000/5000으로 달라졌음
+  - 수정 파일: `Services/Rendering/GdiPlotRenderer.cs` — `SaveDcPlotPng`(단일/선택 저장), `SaveDcOverlayPng`(오버레이)
+    둘 다 `DcFixedXTicks`(0~5000) 사용. 범위 밖 점이 축 밖으로 그려지지 않도록 시리즈 그릴 때 `plotRect` 클리핑 추가
+  - (최초에는 Y축 자동 유지, 같은 날 Y축도 고정으로 변경) 화면 표시(ScottPlot) 그래프는 변경 안 함
+  - `dotnet build` 오류 0. **실제 PNG 출력 확인은 사용자 확인 필요**
+  - 남은 작업: 필요 시 고정 범위를 설정(`DcSensitivitySpec`)에서 바꿀 수 있게 옵션화
 
 - 2026-08-28: Export 확인창/실패 알림을 전 검사항목에서 동일하게 맞춤
   - 배경: 사용자가 "TILT Export 확인" 창을 보고 "이 창이 뜨는 항목과 안 뜨는 항목, 실패창이 뜨는 항목과 안 뜨는 항목을 구별해달라"고 요청.

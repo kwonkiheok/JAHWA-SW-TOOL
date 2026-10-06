@@ -15,6 +15,11 @@ namespace MeasureHub.Services;
 /// </summary>
 public static class GdiPlotRenderer
 {
+    // DC 그래프 X/Y축은 파일마다 4000/5000으로 달라지지 않도록 0~5000(1000 간격)으로 고정한다.
+    // 범위를 벗어난 점은 plotRect 로 클리핑된다.
+    private static readonly List<double> DcFixedXTicks = [0, 1000, 2000, 3000, 4000, 5000];
+    private static readonly List<double> DcFixedYTicks = [0, 1000, 2000, 3000, 4000, 5000];
+
     public static void SaveDcPlotPng(
         IReadOnlyList<double> upX,
         IReadOnlyList<double> upY,
@@ -60,8 +65,8 @@ public static class GdiPlotRenderer
         if (Math.Abs(maxX - minX) < 1e-9) { minX -= 1; maxX += 1; }
         if (Math.Abs(maxY - minY) < 1e-9) { minY -= 1; maxY += 1; }
 
-        var xTicks = BuildNiceTicks(minX, maxX, 6);
-        var yTicks = BuildNiceTicks(minY, maxY, 6);
+        var xTicks = DcFixedXTicks;
+        var yTicks = DcFixedYTicks;
         minX = xTicks.Min();
         maxX = xTicks.Max();
         minY = yTicks.Min();
@@ -93,8 +98,10 @@ public static class GdiPlotRenderer
         }
 
         g.DrawRectangle(axisPen, plotRect);
+        g.SetClip(plotRect);
         DrawSeries(g, upPen, upX, upY, plotRect, minX, maxX, minY, maxY);
         DrawSeries(g, downPen, downX, downY, plotRect, minX, maxX, minY, maxY);
+        g.ResetClip();
 
         var xSize = g.MeasureString(xLabel, labelFont);
         g.DrawString(xLabel, labelFont, textBrush, plotRect.Left + plotRect.Width / 2f - xSize.Width / 2f, plotRect.Bottom + 40);
@@ -165,8 +172,8 @@ public static class GdiPlotRenderer
         if (Math.Abs(maxX - minX) < 1e-9) { minX -= 1; maxX += 1; }
         if (Math.Abs(maxY - minY) < 1e-9) { minY -= 1; maxY += 1; }
 
-        var xTicks = BuildNiceTicks(minX, maxX, 6);
-        var yTicks = BuildNiceTicks(minY, maxY, 6);
+        var xTicks = DcFixedXTicks;
+        var yTicks = DcFixedYTicks;
         minX = xTicks.Min(); maxX = xTicks.Max();
         minY = yTicks.Min(); maxY = yTicks.Max();
 
@@ -196,6 +203,7 @@ public static class GdiPlotRenderer
 
         g.DrawRectangle(axisPen, plotRect);
 
+        g.SetClip(plotRect);
         for (int i = 0; i < series.Count; i++)
         {
             var color = OverlayPalette[i % OverlayPalette.Length];
@@ -207,6 +215,7 @@ public static class GdiPlotRenderer
             DrawSeries(g, upPen, series[i].UpX, series[i].UpY, plotRect, minX, maxX, minY, maxY);
             DrawSeries(g, downPen, series[i].DownX, series[i].DownY, plotRect, minX, maxX, minY, maxY);
         }
+        g.ResetClip();
 
         var xs = g.MeasureString(xLabel, labelFont);
         g.DrawString(xLabel, labelFont, textBrush, plotRect.Left + plotRect.Width / 2f - xs.Width / 2f, plotRect.Bottom + 40);
