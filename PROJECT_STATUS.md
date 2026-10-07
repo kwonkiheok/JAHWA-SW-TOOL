@@ -35,6 +35,37 @@
 
 ## 최근 확인된 작업
 
+- 2026-10-07: Control Tuning 작성에 DC Sensitivity 추가 (브랜치 `feature/template-report`)
+  - 사용자 결정: 표 없이 그래프만, 축마다 **대표 파형 + 누적 파형**, 측정 조건은 기록하지 않음
+  - 창 맨 위에 검사 항목 세그먼트 [FRA] [DC Sensitivity] 를 추가했다.
+    - 시트 기본값: FRA 는 `OL-FRA (Room Temp)` 등 3개, DC 는 `DC Sens`. 마지막 시트는 검사별로 기억한다.
+    - 시트 콤보는 검사별로 따로 둔다. 콤보 하나의 목록을 바꾸면 WPF ComboBox 가 선택을 잃어 칸이 비는 문제가 있었다.
+  - DC 축 탭
+    - [현재 DC 결과 가져오기] 로 `MainViewModel.GetDcHistorySamples()` 를 가져온다(DcResults + PlotFiles 의 Up/Down 곡선).
+    - [★ 대표로 지정] 으로 대표 시료를 고른다. 기본은 첫 파일이다.
+  - DC 블록
+    - 헤더 B~G 와 축 라벨 아래에 대표 파형(`GdiPlotRenderer.SaveDcPlotPng`)과 누적 파형(`SaveDcOverlayPng`)을 넣는다.
+    - 축 행 높이 230pt, 그래프 열 너비 66 으로 1400×900 그래프 비율에 맞췄다.
+  - 구조 정리
+    - `Services/FraHistory` → `Services/ControlTuning` 으로 옮겼다.
+    - 공통 처리(블록 추가, 헤더, 축 라벨, 그림 넣기, 빌드 목록, 헤더 편집, 2단계 삭제)를 `HistoryBlocks.cs` 로 뺐다.
+    - `FraHistoryWriter` / `DcHistoryWriter` 는 검사별 내용만 쓴다.
+    - 창과 VM 이름을 `ControlTuningWindow` / `ControlTuningViewModel` 로 바꿨다.
+    - 설정 파일을 `%AppData%\MeasureHub\control_tuning.json` 으로 바꿨다. 이전 `fra_history.json` 이 있으면 읽어 온다.
+  - 검증
+    - `dotnet build` 오류 0
+    - BaselineCapture 를 master 와 비교한 결과 diff 0 (DC 계산·Export 무변경)
+    - Writer 시험: DC 블록 2개(Highend PRO / FOLD) → 같은 파일에 FRA 시트 추가 → DC 헤더 편집 → 첫 DC 블록 삭제. Excel 로 열어 정상 표시를 확인했다.
+    - UI 자동화로 검사 전환을 반복해도 시트 선택이 유지되는 것을 확인했다.
+  - 버그 수정: FRA 축 탭에서 행이 선택돼 보여도 그룹 버튼이 "시료를 먼저 선택하세요" 를 띄우고 미지정으로 남던 문제
+    - 원인: 행마다 `IsSelected` 를 RowStyle 로 바인딩하던 방식이 Shift 범위 선택·스크롤 시 화면 선택과 어긋났다.
+    - 수정: 그룹·미지정 버튼이 `DataGrid.SelectedItems` 를 CommandParameter 로 직접 받는다(`SelectionCommand`).
+      [전체 선택] 은 DataGrid 의 `ApplicationCommands.SelectAll` 을 쓴다. 항목의 IsSelected 속성은 없앴다.
+  - 남은 작업
+    - 앱에서 DC Import→Export→가져오기→추가 실사용 확인(사용자)
+    - FRA 그룹 지정 수정분 실사용 재확인(사용자)
+    - 그래프 칸 가로 여백이 약간 남는다. Excel 열 너비 px 환산(7px/문자 근사) 오차로 보이며 조정이 필요하면 `GraphColWidth` 를 수정한다.
+
 - 2026-10-07: FRA History 문서 생성 기능 추가 (1차 테스트, FRA 만, 브랜치 `feature/template-report`)
   - 배경: 팀장님 요청인 컨트롤 튜닝 문서(`JAHWA_Control_Tuning_문서 - 양식.xlsm`) 자동 작성을 검토했다.
     - Copilot Studio 는 문서중앙화(M:\)에 접근할 수 없고 그래프를 삽입할 수 없어서 쓸 수 없었다.

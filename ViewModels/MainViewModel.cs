@@ -577,9 +577,9 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand SaveSelectedPlotImagesCommand { get; }
     // DC SENSITIVITY 전용: 체크한 파일 전체를 한 장에 겹쳐 저장
     public RelayCommand SaveSelectedDcOverlayCommand { get; }
-    // FRA History 문서 창 (모달리스, 하나만 띄운다)
-    public RelayCommand OpenFraHistoryCommand { get; }
-    private Views.FraHistoryWindow? _fraHistoryWindow;
+    // Control Tuning 작성 창 (모달리스, 하나만 띄운다)
+    public RelayCommand OpenControlTuningCommand { get; }
+    private Views.ControlTuningWindow? _controlTuningWindow;
 
     public MainViewModel()
     {
@@ -598,7 +598,7 @@ public sealed class MainViewModel : ViewModelBase
         SaveSelectedSettlingImagesCommand = new RelayCommand(SaveSelectedPlotImages, () => IsSettlingInspection && CanSaveSelectedPlotImages);
         SaveSelectedPlotImagesCommand = new RelayCommand(SaveSelectedPlotImages, () => CanSaveSelectedPlotImages);
         SaveSelectedDcOverlayCommand = new RelayCommand(SaveSelectedDcOverlay, () => CanSaveSelectedDcOverlay);
-        OpenFraHistoryCommand = new RelayCommand(OpenFraHistory);
+        OpenControlTuningCommand = new RelayCommand(OpenControlTuning);
 
         FraSpec.PropertyChanged += (_, e) =>
         {
@@ -3081,20 +3081,20 @@ public sealed class MainViewModel : ViewModelBase
     public double GetDisplayFraPhase(double phaseDeg)
         => IsFraPhaseInverted ? -phaseDeg : phaseDeg;
 
-    private void OpenFraHistory()
+    private void OpenControlTuning()
     {
-        if (_fraHistoryWindow is { IsLoaded: true })
+        if (_controlTuningWindow is { IsLoaded: true })
         {
-            _fraHistoryWindow.Activate();
+            _controlTuningWindow.Activate();
             return;
         }
-        _fraHistoryWindow = new Views.FraHistoryWindow
+        _controlTuningWindow = new Views.ControlTuningWindow
         {
             Owner = System.Windows.Application.Current.MainWindow,
-            DataContext = new FraHistoryViewModel(this),
+            DataContext = new ControlTuningViewModel(this),
         };
-        _fraHistoryWindow.Closed += (_, _) => _fraHistoryWindow = null;
-        _fraHistoryWindow.Show();
+        _controlTuningWindow.Closed += (_, _) => _controlTuningWindow = null;
+        _controlTuningWindow.Show();
     }
 
     /// <summary>
@@ -3115,6 +3115,27 @@ public sealed class MainViewModel : ViewModelBase
             .Where(r => points.ContainsKey(r.FileName))
             .Select(r => new FraHistorySample(r.FileName, r.Judge, r.Gain10Hz, r.GM, r.PM, r.PM3,
                 ApplyFraPhaseMode(points[r.FileName])))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Control Tuning 문서용: 마지막 DC SENSITIVITY Export 결과의 Up/Down 곡선을 돌려준다.
+    /// 축 라벨(Input/Output 컬럼 이름)은 DcResults 에서 가져온다.
+    /// </summary>
+    public IReadOnlyList<DcHistorySample> GetDcHistorySamples()
+    {
+        if (!IsDcSensitivityInspection || DcResults.Count == 0)
+            return Array.Empty<DcHistorySample>();
+
+        var rows = DcResults
+            .GroupBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        return PlotFiles
+            .Where(p => p.IsDcSensitivity && rows.ContainsKey(p.FileName))
+            .Select(p => new DcHistorySample(p.FileName,
+                rows[p.FileName].InputColumn, rows[p.FileName].OutputColumn,
+                p.DcUpInput, p.DcUpOutput, p.DcDownInput, p.DcDownOutput))
             .ToList();
     }
 

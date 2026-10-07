@@ -42,7 +42,7 @@
                         IsEnabled="{Binding HasImportedFolder}" FontWeight="Bold"/>
 
                 <Button Grid.Column="6" Style="{StaticResource SecondaryButton}" Content="Control Tuning 작성"
-                        Command="{Binding OpenFraHistoryCommand}" Width="170" FontWeight="Bold"
+                        Command="{Binding OpenControlTuningCommand}" Width="170" FontWeight="Bold"
                         ToolTip="FRA 결과를 축·그룹별로 정리해 History 문서(xlsx)에 빌드 단위로 쌓습니다."/>
 
                 <StackPanel Grid.Column="8" Orientation="Horizontal" VerticalAlignment="Center">
