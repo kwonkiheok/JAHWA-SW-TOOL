@@ -1,6 +1,6 @@
 # MeasureHub 작업 현황
 
-최종 갱신: 2026-09-28
+최종 갱신: 2026-10-07
 
 ## 프로젝트 개요
 
@@ -34,6 +34,52 @@
   - 그래프는 ScottPlot Multiplot으로 X축/Y축 패널을 위/아래로 분리, 각 패널 안에서 Posi(target)와 Hall(실제)을 같은 왼쪽 축 스케일로 겹쳐 그리고 Diff는 오른쪽 축(+±Spec 점선)에 표시(최초 구현은 X만 단일 패널이었으나 사용자 피드백으로 X/Y 분리 + Posi/Hall 오버랩 강화)
 
 ## 최근 확인된 작업
+
+- 2026-10-07: FRA History 문서 생성 기능 추가 (1차 테스트, FRA 만, 브랜치 `feature/template-report`)
+  - 배경: 팀장님 요청인 컨트롤 튜닝 문서(`JAHWA_Control_Tuning_문서 - 양식.xlsm`) 자동 작성을 검토했다.
+    - Copilot Studio 는 문서중앙화(M:\)에 접근할 수 없고 그래프를 삽입할 수 없어서 쓸 수 없었다.
+    - 그래서 MeasureHub 에서 직접 문서를 만들기로 했다.
+    - 형식은 예시 파일(`workspace\양식예시\FRA_History_예시_MeasureHub.xlsx`)로 사용자와 확정했다.
+  - 동작
+    - 상단 바의 **[Control Tuning 작성]** 버튼으로 창을 연다. 모달리스라 창을 열어 둔 채 메인 창에서 폴더를 바꿔 Import/Export 할 수 있다.
+    - 축 탭(OIS X / OIS Y / AF)에서 "현재 FRA 결과 가져오기"를 누르면 마지막 FRA Export 의 `FraResults` 와 `PlotFiles` 를 가져온다.
+    - 시료를 선택하고 그룹 버튼(최대 4개, 이름 입력 가능)을 누른다. 파일명 자동 인식은 하지 않는다.
+    - "문서에 추가"를 누르면 xlsx 의 지정 시트 맨 아래에 빌드 블록 1개가 추가된다. 파일이나 시트가 없으면 새로 만든다.
+  - 블록 형식
+    - 헤더(개발 단계 ~ 검토 의견)는 블록 전체에 세로 병합한다.
+    - 축마다 결과표를 둔다: Group / No. / File / Judge / 10Hz Gain / GM / PM / -3dB PM, Min / Max / Avg / STDEV 수식. Spec 미달 값은 빨간색이다.
+    - 오른쪽에 그룹별 Bode 오버레이를 둔다(`PlotImageExporter.SaveBodeOverlayPng`).
+      - 그래프 칸 크기에 맞춘 비율로 2배 해상도로 그려서 빈 공간이 생기지 않는다.
+    - 측정하지 않은 축은 "측정 없음" 1행으로 표시한다.
+  - **빌드 목록(편집·삭제)** 탭
+    - 문서의 빌드 블록을 B열(개발 단계) 세로 병합 범위로 찾아 목록으로 보여 준다. 별도 표시를 남기지 않으므로 이전에 만든 문서도 그대로 쓸 수 있다.
+    - 헤더 6칸을 고친 뒤 [저장]하면 문서에 반영된다(`FraHistoryWriter.UpdateHeader`).
+    - [삭제]하면 블록 행과 그 안의 그래프를 지우고 아래 블록을 위로 당긴다(`FraHistoryWriter.DeleteBuild`).
+    - ClosedXML 0.104 제약: 불러온 그림을 지운 뒤 같은 저장에서 그림을 새로 넣으면 파일이 깨진다(재열기 시 ArgumentOutOfRangeException).
+      - 그래서 삭제는 두 번에 나눠 저장한다. ① 남길 그림을 메모리에 기억하고 그림 전부와 해당 행을 지운 뒤 저장 → ② 다시 열어 남길 그림을 새 위치에 추가하고 저장.
+      - 원본이 깨지지 않도록 임시 복사본에서 작업한 뒤 바꿔 넣는다.
+    - `XLPicturePlacement.MoveAndSize` 를 주면 Excel 이 파일을 "복구"해야 열 수 있어서 쓰지 않는다. 따라서 Excel 에서 직접 행을 지우면 그래프 그림이 남는다. 블록 삭제는 앱에서 한다.
+    - 시험: 새로 만들기 → 추가 2회 → 다른 시트 추가 → 헤더 편집 → 첫 블록 삭제 → 마지막 블록 삭제 → 다시 추가까지 진행했다. Excel 로 열어 그림 위치가 정상이고 복구 메시지가 없는 것을 확인했다.
+    - UI 자동화로 버튼 → 창 열림 → 목록 탭 표시까지 확인했다.
+  - 마지막 입력값(파일 경로, 시트, 제작처, 담당자, 그룹 이름)은 `%AppData%\MeasureHub\fra_history.json` 에 기억한다.
+  - 추가 파일
+    - `Services/FraHistory/FraHistoryModels.cs`
+    - `Services/FraHistory/FraHistoryWriter.cs` (ClosedXML)
+    - `ViewModels/FraHistoryViewModel.cs`
+    - `Views/FraHistoryWindow.xaml(.cs)`
+  - 수정 파일
+    - `MainWindow.xaml`: 버튼 추가
+    - `ViewModels/MainViewModel.cs`: `OpenFraHistoryCommand`, `GetFraHistorySamples()`, `GetFraHistorySpec()` 추가. 기존 FRA 계산과 Export 는 변경하지 않았다.
+  - 검증
+    - `dotnet build` 오류 0 (경고는 기존 NU1701 뿐)
+    - BaselineCapture 를 master(3fce7dc)와 작업 후로 비교한 결과 diff 0줄
+      - 참고: `tools/baseline_before.txt` 자체는 이전 커밋들(SCAN AKM 기준선 통일 등) 이후 갱신되지 않아 14줄이 다르다. 이번 작업과는 무관하다.
+    - Writer 단독 시험(새 파일 → 같은 시트 2회 추가 → 다른 시트 추가)을 Excel 로 열어 정상 표시를 확인했다.
+  - 남은 작업
+    - 앱 UI 실사용 확인(사용자)
+    - 기존 양식(.xlsm)에 넣을지 별도 xlsx 로 쓸지 최종 결정
+    - DC / Settling 등 다른 검사로 확장
+    - `tools/baseline_before.txt` 갱신 여부 결정
 
 - 2026-09-28: DC SENSITIVITY 그래프 이미지 Y축도 0~5000(1000 간격)으로 고정(`DcFixedYTicks`, 단일/오버레이 모두)
   - 사용자 요청. 이로써 X/Y 모두 고정, 5000 초과 값은 클리핑됨

@@ -577,6 +577,9 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand SaveSelectedPlotImagesCommand { get; }
     // DC SENSITIVITY 전용: 체크한 파일 전체를 한 장에 겹쳐 저장
     public RelayCommand SaveSelectedDcOverlayCommand { get; }
+    // FRA History 문서 창 (모달리스, 하나만 띄운다)
+    public RelayCommand OpenFraHistoryCommand { get; }
+    private Views.FraHistoryWindow? _fraHistoryWindow;
 
     public MainViewModel()
     {
@@ -595,6 +598,7 @@ public sealed class MainViewModel : ViewModelBase
         SaveSelectedSettlingImagesCommand = new RelayCommand(SaveSelectedPlotImages, () => IsSettlingInspection && CanSaveSelectedPlotImages);
         SaveSelectedPlotImagesCommand = new RelayCommand(SaveSelectedPlotImages, () => CanSaveSelectedPlotImages);
         SaveSelectedDcOverlayCommand = new RelayCommand(SaveSelectedDcOverlay, () => CanSaveSelectedDcOverlay);
+        OpenFraHistoryCommand = new RelayCommand(OpenFraHistory);
 
         FraSpec.PropertyChanged += (_, e) =>
         {
@@ -3076,6 +3080,50 @@ public sealed class MainViewModel : ViewModelBase
 
     public double GetDisplayFraPhase(double phaseDeg)
         => IsFraPhaseInverted ? -phaseDeg : phaseDeg;
+
+    private void OpenFraHistory()
+    {
+        if (_fraHistoryWindow is { IsLoaded: true })
+        {
+            _fraHistoryWindow.Activate();
+            return;
+        }
+        _fraHistoryWindow = new Views.FraHistoryWindow
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+            DataContext = new FraHistoryViewModel(this),
+        };
+        _fraHistoryWindow.Closed += (_, _) => _fraHistoryWindow = null;
+        _fraHistoryWindow.Show();
+    }
+
+    /// <summary>
+    /// FRA History 문서용: 마지막 FRA Export 결과(FraResults)와 Bode 데이터(PlotFiles)를 파일명으로 묶어 돌려준다.
+    /// 그래프는 화면·PNG 와 같도록 위상 모드(ApplyFraPhaseMode)를 적용한다.
+    /// </summary>
+    public IReadOnlyList<FraHistorySample> GetFraHistorySamples()
+    {
+        if (!IsFraInspection || FraResults.Count == 0)
+            return Array.Empty<FraHistorySample>();
+
+        var points = PlotFiles
+            .Where(p => !p.IsAllOverlayItem && p.Points.Count > 0)
+            .GroupBy(p => p.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Points, StringComparer.OrdinalIgnoreCase);
+
+        return FraResults
+            .Where(r => points.ContainsKey(r.FileName))
+            .Select(r => new FraHistorySample(r.FileName, r.Judge, r.Gain10Hz, r.GM, r.PM, r.PM3,
+                ApplyFraPhaseMode(points[r.FileName])))
+            .ToList();
+    }
+
+    public FraHistorySpec GetFraHistorySpec()
+    {
+        static double? Parse(string? s)
+            => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        return new FraHistorySpec(Parse(FraSpec.GainMarginDb), Parse(FraSpec.PhaseMarginDeg), Parse(FraSpec.PhaseMarginMinus3dBDeg));
+    }
 
     private void ApplyScanJudgementToAll()
     {

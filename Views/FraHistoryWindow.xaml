@@ -1,0 +1,576 @@
+<Window x:Class="MeasureHub.Views.FraHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Control Tuning 작성 — FRA History" Width="1060" Height="880" MinWidth="900" MinHeight="700"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI, Malgun Gothic" FontSize="12.5"
+        TextOptions.TextFormattingMode="Display"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <!-- ================= 색 ================= -->
+        <SolidColorBrush x:Key="Fh.Text" Color="#1F2937"/>
+        <SolidColorBrush x:Key="Fh.SubText" Color="#6B7280"/>
+        <SolidColorBrush x:Key="Fh.Line" Color="#E5E7EB"/>
+        <SolidColorBrush x:Key="Fh.LineStrong" Color="#D1D5DB"/>
+        <SolidColorBrush x:Key="Fh.Green" Color="#16A34A"/>
+        <SolidColorBrush x:Key="Fh.GreenDark" Color="#15803D"/>
+        <SolidColorBrush x:Key="Fh.GreenSoft" Color="#ECFDF3"/>
+        <SolidColorBrush x:Key="Fh.GreenSoftHover" Color="#D1FAE5"/>
+        <SolidColorBrush x:Key="Fh.GreenBorder" Color="#86EFAC"/>
+        <SolidColorBrush x:Key="Fh.Hover" Color="#F3F4F6"/>
+        <SolidColorBrush x:Key="Fh.Red" Color="#DC2626"/>
+
+        <!-- ================= 버튼 ================= -->
+        <!-- 공통 템플릿: Padding 이 실제로 적용되고 hover / pressed / disabled 상태가 보이게 한다 -->
+        <Style x:Key="Fh.Btn" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource Fh.Text}"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.LineStrong}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.Hover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.Line}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 강조 외곽선 버튼 (현재 FRA 결과 가져오기) -->
+        <Style x:Key="Fh.Btn.Accent" TargetType="Button" BasedOn="{StaticResource Fh.Btn}">
+            <Setter Property="Foreground" Value="{StaticResource Fh.GreenDark}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.Green}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.GreenSoft}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.GreenSoftHover}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 그룹 지정 칩 -->
+        <Style x:Key="Fh.Btn.Chip" TargetType="Button" BasedOn="{StaticResource Fh.Btn}">
+            <Setter Property="Foreground" Value="{StaticResource Fh.GreenDark}"/>
+            <Setter Property="Background" Value="{StaticResource Fh.GreenSoft}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.GreenBorder}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinWidth" Value="76"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="14" Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.GreenSoftHover}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Fh.Green}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.GreenBorder}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 회색 칩 (미지정) -->
+        <Style x:Key="Fh.Btn.ChipGray" TargetType="Button" BasedOn="{StaticResource Fh.Btn.Chip}">
+            <Setter Property="Foreground" Value="{StaticResource Fh.SubText}"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.LineStrong}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+
+        <!-- 주 실행 버튼 (문서에 추가) -->
+        <Style x:Key="Fh.Btn.Primary" TargetType="Button" BasedOn="{StaticResource Fh.Btn}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{StaticResource Fh.Green}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.Green}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="28,0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.GreenDark}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 표 안의 작은 버튼 -->
+        <Style x:Key="Fh.Btn.Row" TargetType="Button" BasedOn="{StaticResource Fh.Btn}">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+        </Style>
+        <Style x:Key="Fh.Btn.RowDanger" TargetType="Button" BasedOn="{StaticResource Fh.Btn.Row}">
+            <Setter Property="Foreground" Value="{StaticResource Fh.Red}"/>
+            <Setter Property="BorderBrush" Value="#FCA5A5"/>
+        </Style>
+
+        <!-- ================= 글자 ================= -->
+        <Style x:Key="Fh.Label" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Fh.SubText}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+        <Style x:Key="Fh.SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Fh.Text}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- 입력칸: 앱 공통 TextBox 스타일을 쓰되 높이만 맞춘다 -->
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource Fh.Text}"/>
+        </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="12.5"/>
+        </Style>
+
+        <!-- ================= 상위 탭 (밑줄형) ================= -->
+        <Style x:Key="Fh.TopTab" TargetType="TabItem">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <!-- 굵기·색은 탭 제목(Hdr)에만 준다. TabItem 에 주면 탭 안 입력칸까지 물려받는다. -->
+                        <Border x:Name="Bd" Padding="16,8" Margin="0,0,4,0" Background="Transparent"
+                                BorderThickness="0,0,0,2" BorderBrush="Transparent">
+                            <ContentPresenter x:Name="Hdr" ContentSource="Header" HorizontalAlignment="Center"
+                                              TextElement.Foreground="{StaticResource Fh.SubText}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Fh.Green}"/>
+                                <Setter TargetName="Hdr" Property="TextElement.Foreground" Value="{StaticResource Fh.Text}"/>
+                                <Setter TargetName="Hdr" Property="TextElement.FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hdr" Property="TextElement.Foreground" Value="{StaticResource Fh.Text}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ================= 축 탭 (세그먼트형) ================= -->
+        <!-- 탭 제목 색은 Tag 로 넘긴다 (Foreground 를 쓰면 탭 안 내용까지 물려받는다) -->
+        <Style x:Key="Fh.AxisTab" TargetType="TabItem">
+            <Setter Property="Tag" Value="{StaticResource Fh.SubText}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd" Padding="16,5" Margin="0,0,6,0" CornerRadius="6"
+                                Background="White" BorderThickness="1" BorderBrush="{StaticResource Fh.LineStrong}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.Text}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Fh.Text}"/>
+                                <Setter Property="Tag" Value="White"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsSelected" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Fh.Hover}"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ================= 표 ================= -->
+        <Style x:Key="Fh.Grid" TargetType="DataGrid">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="AlternatingRowBackground" Value="#FAFAFB"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#F0F1F3"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowHeight" Value="28"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Fh.Text}"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F9FAFB"/>
+            <Setter Property="Foreground" Value="{StaticResource Fh.SubText}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Padding" Value="8,7"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Fh.Line}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#DCFCE7"/>
+                    <Setter Property="Foreground" Value="{StaticResource Fh.Text}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 문서 (두 탭 공통) -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="210"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="문서 파일" Style="{StaticResource Fh.Label}"/>
+                <TextBox Grid.Column="1" Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="없는 파일이면 새로 만들고, 있는 파일이면 시트 맨 아래에 빌드를 추가합니다."/>
+                <Button Grid.Column="2" Content="찾아보기" Style="{StaticResource Fh.Btn}" Margin="8,0,0,0"
+                        Command="{Binding BrowseOutputCommand}"/>
+                <TextBlock Grid.Column="4" Text="시트" Style="{StaticResource Fh.Label}"/>
+                <ComboBox Grid.Column="5" ItemsSource="{Binding SheetNameOptions}" SelectedItem="{Binding SheetName}"/>
+            </Grid>
+        </Border>
+
+        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent"
+                    BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource Fh.TopTab}">
+
+            <!-- ================= 새 빌드 추가 ================= -->
+            <TabItem Header="새 빌드 추가">
+                <Grid Margin="0,12,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 빌드 정보 + 그룹 이름 -->
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="76"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="8"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="8"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="14"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="8" Text="빌드 정보" Style="{StaticResource Fh.SectionTitle}"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="개발 단계" Style="{StaticResource Fh.Label}"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Stage, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="3" Text="제작처" Style="{StaticResource Fh.Label}"/>
+                            <TextBox Grid.Row="1" Grid.Column="4" Text="{Binding Maker, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="6" Text="제작일자" Style="{StaticResource Fh.Label}"/>
+                            <TextBox Grid.Row="1" Grid.Column="7" Text="{Binding Date, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="검토 담당자" Style="{StaticResource Fh.Label}"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Owner, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Grid.Row="3" Grid.Column="3" Text="검토 사유" Style="{StaticResource Fh.Label}"/>
+                            <TextBox Grid.Row="3" Grid.Column="4" Grid.ColumnSpan="4" Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="검토 의견" Style="{StaticResource Fh.Label}"
+                                       VerticalAlignment="Top" Margin="0,7,10,0"/>
+                            <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="7" Height="48" TextWrapping="Wrap" AcceptsReturn="True"
+                                     VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"
+                                     Text="{Binding Opinion, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <Border Grid.Row="7" Grid.ColumnSpan="8" BorderBrush="{StaticResource Fh.Line}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="그룹 이름" Width="76" Style="{StaticResource Fh.Label}"/>
+                                    <ItemsControl ItemsSource="{Binding GroupNames}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBox Width="110" Margin="0,0,8,0" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="최대 4개 · 예: Cav1~4 / Grease 대·중·소" Style="{StaticResource Fh.Label}" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- 축별 시료 -->
+                    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16,14">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="축별 시료와 그룹" Style="{StaticResource Fh.SectionTitle}"/>
+
+                            <TabControl Grid.Row="1" ItemsSource="{Binding Axes}" SelectedItem="{Binding SelectedAxis}"
+                                        BorderThickness="0" Padding="0" Background="Transparent"
+                                        ItemContainerStyle="{StaticResource Fh.AxisTab}">
+                                <TabControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="12"
+                                                   Foreground="{Binding Tag, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+                                    </DataTemplate>
+                                </TabControl.ItemTemplate>
+                                <TabControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="10"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- 도구 줄: 왼쪽 = 가져오기/선택, 오른쪽 = 그룹 지정 -->
+                                            <DockPanel Grid.Row="0" LastChildFill="False">
+                                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                                    <Button Content="↓  현재 FRA 결과 가져오기" Style="{StaticResource Fh.Btn.Accent}"
+                                                            Command="{Binding ImportCommand}"
+                                                            ToolTip="메인 창에서 마지막으로 Export 한 FRA 결과를 이 축으로 가져옵니다."/>
+                                                    <Button Content="전체 선택" Style="{StaticResource Fh.Btn}" Command="{Binding SelectAllCommand}"/>
+                                                    <Button Content="비우기" Style="{StaticResource Fh.Btn}" Command="{Binding ClearCommand}"/>
+                                                </StackPanel>
+                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                    <TextBlock Text="선택 시료 →" Style="{StaticResource Fh.Label}" Margin="0,0,8,0"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[0]}"
+                                                            Content="{Binding DataContext.GroupNames[0].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[1]}"
+                                                            Content="{Binding DataContext.GroupNames[1].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[2]}"
+                                                            Content="{Binding DataContext.GroupNames[2].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[3]}"
+                                                            Content="{Binding DataContext.GroupNames[3].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Content="미지정" Style="{StaticResource Fh.Btn.ChipGray}" Margin="0"
+                                                            Command="{Binding UnassignCommand}"/>
+                                                </StackPanel>
+                                            </DockPanel>
+
+                                            <Grid Grid.Row="2">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <DataGrid Grid.Row="0" Style="{StaticResource Fh.Grid}" ItemsSource="{Binding Items}"
+                                                          SelectionMode="Extended" SelectionUnit="FullRow" IsReadOnly="True">
+                                                    <DataGrid.RowStyle>
+                                                        <Style TargetType="DataGridRow">
+                                                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                                                        </Style>
+                                                    </DataGrid.RowStyle>
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Header="GROUP" Binding="{Binding GroupName}" Width="90">
+                                                            <DataGridTextColumn.ElementStyle>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    <Setter Property="Foreground" Value="#15803D"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding GroupIndex}" Value="-1">
+                                                                            <Setter Property="Foreground" Value="#9CA3AF"/>
+                                                                            <Setter Property="FontWeight" Value="Normal"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </DataGridTextColumn.ElementStyle>
+                                                        </DataGridTextColumn>
+                                                        <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="*"/>
+                                                        <DataGridTextColumn Header="JUDGE" Binding="{Binding Judge}" Width="64">
+                                                            <DataGridTextColumn.ElementStyle>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Judge}" Value="NG">
+                                                                            <Setter Property="Foreground" Value="#DC2626"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </DataGridTextColumn.ElementStyle>
+                                                        </DataGridTextColumn>
+                                                        <DataGridTextColumn Header="10Hz GAIN" Binding="{Binding Gain10Hz}" Width="84"/>
+                                                        <DataGridTextColumn Header="GM" Binding="{Binding GM}" Width="70"/>
+                                                        <DataGridTextColumn Header="PM" Binding="{Binding PM}" Width="70"/>
+                                                        <DataGridTextColumn Header="-3dB PM" Binding="{Binding PM3}" Width="74"/>
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+                                                <TextBlock Grid.Row="1" Text="{Binding Summary}" Style="{StaticResource Fh.Label}" Margin="2,8,0,0"/>
+                                            </Grid>
+                                        </Grid>
+                                    </DataTemplate>
+                                </TabControl.ContentTemplate>
+                            </TabControl>
+                        </Grid>
+                    </Border>
+
+                    <!-- 실행 -->
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
+                                   Text="① 메인 창에서 축별 폴더를 FRA 로 Import → Export   ② 해당 축 탭에서 결과 가져오기   ③ 시료 선택 후 그룹 지정   ④ 문서에 추가 (빌드 1회 = 블록 1개)"/>
+                        <Button Grid.Column="2" Content="문서에 추가" Style="{StaticResource Fh.Btn.Primary}"
+                                Command="{Binding AppendCommand}"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ================= 빌드 목록 (편집 · 삭제) ================= -->
+            <TabItem Header="빌드 목록 (편집 · 삭제)">
+                <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,12,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0">
+                            <Button DockPanel.Dock="Left" Content="↻  새로 고침" Style="{StaticResource Fh.Btn}"
+                                    Command="{Binding RefreshBuildsCommand}"/>
+                            <TextBlock Text="{Binding BuildsStatus}" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" Margin="8,0,0,0"/>
+                        </DockPanel>
+
+                        <DataGrid Grid.Row="2" Style="{StaticResource Fh.Grid}" ItemsSource="{Binding Builds}"
+                                  CanUserDeleteRows="False" CanUserSortColumns="False" SelectionMode="Single" RowHeight="32">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True" Width="36"/>
+                                <DataGridTextColumn Header="위치" Binding="{Binding RowRange}" IsReadOnly="True" Width="84"/>
+                                <DataGridTextColumn Header="개발 단계" Binding="{Binding Stage, UpdateSourceTrigger=PropertyChanged}" Width="84"/>
+                                <DataGridTextColumn Header="제작처" Binding="{Binding Maker, UpdateSourceTrigger=PropertyChanged}" Width="72"/>
+                                <DataGridTextColumn Header="제작일자" Binding="{Binding Date, UpdateSourceTrigger=PropertyChanged}" Width="92"/>
+                                <DataGridTextColumn Header="검토 담당자" Binding="{Binding Owner, UpdateSourceTrigger=PropertyChanged}" Width="92"/>
+                                <DataGridTextColumn Header="검토 사유" Binding="{Binding Reason, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                                <DataGridTextColumn Header="검토 의견" Binding="{Binding Opinion, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                                <DataGridTemplateColumn Header="" Width="118">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="저장" Style="{StaticResource Fh.Btn.Row}" Command="{Binding SaveCommand}"/>
+                                                <Button Content="삭제" Style="{StaticResource Fh.Btn.RowDanger}" Command="{Binding DeleteCommand}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
