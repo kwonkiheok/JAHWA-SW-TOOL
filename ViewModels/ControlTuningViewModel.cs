@@ -18,11 +18,13 @@ public sealed class ControlTuningViewModel : ViewModelBase
 {
     public const string InspectionFra = "FRA";
     public const string InspectionDc = "DC Sensitivity";
+    public const string InspectionSettling = "Settling Time";
 
     private static readonly Dictionary<string, string[]> DefaultSheetNames = new()
     {
         [InspectionFra] = ["OL-FRA (Room Temp)", "OL-FRA (High Temp)", "Plant-FRA"],
         [InspectionDc] = ["DC Sens"],
+        [InspectionSettling] = ["AF Settling Time"],
     };
 
     private readonly MainViewModel _main;
@@ -31,6 +33,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
     {
         [InspectionFra] = "OL-FRA (Room Temp)",
         [InspectionDc] = "DC Sens",
+        [InspectionSettling] = "AF Settling Time",
     };
 
     public ControlTuningViewModel(MainViewModel main)
@@ -42,15 +45,18 @@ public sealed class ControlTuningViewModel : ViewModelBase
         {
             Axes.Add(new FraHistoryAxisViewModel(axis, this));
             DcAxes.Add(new DcHistoryAxisViewModel(axis, this));
+            SettlingAxes.Add(new SettlingHistoryAxisViewModel(axis, this));
         }
         SelectedAxis = Axes[^1];   // 보통 AF 부터 측정한다
         SelectedDcAxis = DcAxes[^1];
+        SelectedSettlingAxis = SettlingAxes[^1];
 
         BrowseOutputCommand = new RelayCommand(BrowseOutput);
         AppendCommand = new RelayCommand(Append);
         RefreshBuildsCommand = new RelayCommand(RefreshBuilds);
         SelectFraCommand = new RelayCommand(() => Inspection = InspectionFra);
         SelectDcCommand = new RelayCommand(() => Inspection = InspectionDc);
+        SelectSettlingCommand = new RelayCommand(() => Inspection = InspectionSettling);
         LoadSettings();
         RefreshSheetOptions();
     }
@@ -68,14 +74,20 @@ public sealed class ControlTuningViewModel : ViewModelBase
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsFra));
             OnPropertyChanged(nameof(IsDc));
+            OnPropertyChanged(nameof(IsSettling));
+            OnPropertyChanged(nameof(UsesGroups));
             if (SelectedTabIndex == 1) RefreshBuilds();
         }
     }
 
     public bool IsFra => Inspection == InspectionFra;
     public bool IsDc => Inspection == InspectionDc;
+    public bool IsSettling => Inspection == InspectionSettling;
+    /// <summary>그룹 이름 입력칸을 쓰는 검사 (FRA, Settling).</summary>
+    public bool UsesGroups => IsFra || IsSettling;
     public RelayCommand SelectFraCommand { get; }
     public RelayCommand SelectDcCommand { get; }
+    public RelayCommand SelectSettlingCommand { get; }
 
     // ---- 문서 / 시트 ----
 
@@ -90,6 +102,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
 
     public string FraSheetName { get => _sheetByInspection[InspectionFra]; set => SetSheet(InspectionFra, value); }
     public string DcSheetName { get => _sheetByInspection[InspectionDc]; set => SetSheet(InspectionDc, value); }
+    public string SettlingSheetName { get => _sheetByInspection[InspectionSettling]; set => SetSheet(InspectionSettling, value); }
 
     private IReadOnlyList<string> _fraSheetOptions = [];
     public IReadOnlyList<string> FraSheetOptions { get => _fraSheetOptions; private set { _fraSheetOptions = value; OnPropertyChanged(); } }
@@ -97,11 +110,21 @@ public sealed class ControlTuningViewModel : ViewModelBase
     private IReadOnlyList<string> _dcSheetOptions = [];
     public IReadOnlyList<string> DcSheetOptions { get => _dcSheetOptions; private set { _dcSheetOptions = value; OnPropertyChanged(); } }
 
+    private IReadOnlyList<string> _settlingSheetOptions = [];
+    public IReadOnlyList<string> SettlingSheetOptions { get => _settlingSheetOptions; private set { _settlingSheetOptions = value; OnPropertyChanged(); } }
+
+    private static string SheetPropertyOf(string inspection) => inspection switch
+    {
+        InspectionFra => nameof(FraSheetName),
+        InspectionDc => nameof(DcSheetName),
+        _ => nameof(SettlingSheetName),
+    };
+
     private void SetSheet(string inspection, string? value)
     {
         if (string.IsNullOrEmpty(value) || value == _sheetByInspection[inspection]) return;   // 목록 갱신 중 빈 선택은 무시
         _sheetByInspection[inspection] = value;
-        OnPropertyChanged(inspection == InspectionFra ? nameof(FraSheetName) : nameof(DcSheetName));
+        OnPropertyChanged(SheetPropertyOf(inspection));
         if (inspection == Inspection && SelectedTabIndex == 1) RefreshBuilds();
     }
 
@@ -125,8 +148,10 @@ public sealed class ControlTuningViewModel : ViewModelBase
         }
         FraSheetOptions = Build(InspectionFra);
         DcSheetOptions = Build(InspectionDc);
+        SettlingSheetOptions = Build(InspectionSettling);
         OnPropertyChanged(nameof(FraSheetName));
         OnPropertyChanged(nameof(DcSheetName));
+        OnPropertyChanged(nameof(SettlingSheetName));
     }
 
     public RelayCommand BrowseOutputCommand { get; }
@@ -191,6 +216,56 @@ public sealed class ControlTuningViewModel : ViewModelBase
         return samples;
     }
 
+    // ---- Settling Time ----
+
+    public ObservableCollection<SettlingHistoryAxisViewModel> SettlingAxes { get; } = new();
+
+    private SettlingHistoryAxisViewModel? _selectedSettlingAxis;
+    public SettlingHistoryAxisViewModel? SelectedSettlingAxis { get => _selectedSettlingAxis; set { _selectedSettlingAxis = value; OnPropertyChanged(); } }
+
+    internal IReadOnlyList<SettlingHistorySample> TakeCurrentSettlingResults()
+    {
+        var samples = _main.GetSettlingHistorySamples();
+        if (samples.Count == 0)
+            Info("가져올 Settling Time 결과가 없습니다.\n메인 창에서 SETTLING TIME 검사로 Import → Export 를 먼저 실행하세요.");
+        return samples;
+    }
+
+    /// <summary>Settling 빌드를 검사하고, 문서에 쓰는 동작을 돌려준다 (문제가 있으면 null).</summary>
+    private Action<string>? PrepareSettling()
+    {
+        var axes = new List<SettlingHistoryAxis>();
+        foreach (var a in SettlingAxes.Where(a => a.Items.Count > 0))
+        {
+            var checkedConds = a.Conditions.Where(c => c.IsChecked).Select(c => c.Label).ToList();
+            if (checkedConds.Count == 0)
+            {
+                Warn($"{a.Axis}: 표에 넣을 조건을 하나 이상 체크하세요.");
+                return null;
+            }
+            if (checkedConds.Count > SettlingHistoryWriter.MaxConditions)
+            {
+                Warn($"{a.Axis}: 조건은 최대 {SettlingHistoryWriter.MaxConditions}개까지 넣을 수 있습니다. (지금 {checkedConds.Count}개 체크)");
+                return null;
+            }
+            var axis = a.BuildAxis(checkedConds);
+            if (axis is not null) axes.Add(axis);
+        }
+        if (axes.Count == 0)
+        {
+            Warn("그룹이 지정된 시료가 없습니다.\n축 탭에서 Settling 결과를 가져온 뒤, 시료를 선택하고 그룹 버튼을 누르세요.");
+            return null;
+        }
+        int unassigned = SettlingAxes.Sum(a => a.Items.Count(i => i.GroupIndex < 0));
+        if (unassigned > 0 && !Confirm($"그룹이 지정되지 않은 시료 {unassigned}개는 문서에서 제외됩니다. 계속할까요?"))
+            return null;
+
+        var build = new SettlingHistoryBuild(CurrentHeader, axes);
+        var spec = _main.GetSettlingHistorySpec();
+        var (path, sheet) = (OutputPath, SheetName);
+        return tempDir => SettlingHistoryWriter.AppendBuild(path, sheet, build, spec, tempDir);
+    }
+
     // ---- DC Sensitivity ----
 
     public ObservableCollection<DcHistoryAxisViewModel> DcAxes { get; } = new();
@@ -218,7 +293,12 @@ public sealed class ControlTuningViewModel : ViewModelBase
             return;
         }
 
-        Action<string>? write = IsFra ? PrepareFra() : PrepareDc();
+        Action<string>? write = Inspection switch
+        {
+            InspectionFra => PrepareFra(),
+            InspectionDc => PrepareDc(),
+            _ => PrepareSettling(),
+        };
         if (write is null) return;
 
         bool existed = File.Exists(OutputPath);
@@ -376,6 +456,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         public string Inspection { get; set; } = "";
         public string SheetName { get; set; } = "";       // FRA 시트 (이전 설정 파일과 같은 이름)
         public string DcSheetName { get; set; } = "";
+        public string SettlingSheetName { get; set; } = "";
         public string Maker { get; set; } = "";
         public string Owner { get; set; } = "";
         public List<string> GroupNames { get; set; } = new();
@@ -392,6 +473,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             OutputPath = s.OutputPath;
             if (!string.IsNullOrWhiteSpace(s.SheetName)) _sheetByInspection[InspectionFra] = s.SheetName;
             if (!string.IsNullOrWhiteSpace(s.DcSheetName)) _sheetByInspection[InspectionDc] = s.DcSheetName;
+            if (!string.IsNullOrWhiteSpace(s.SettlingSheetName)) _sheetByInspection[InspectionSettling] = s.SettlingSheetName;
             if (DefaultSheetNames.ContainsKey(s.Inspection)) _inspection = s.Inspection;
             Maker = s.Maker;
             Owner = s.Owner;
@@ -410,6 +492,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             {
                 OutputPath = OutputPath, Inspection = Inspection,
                 SheetName = _sheetByInspection[InspectionFra], DcSheetName = _sheetByInspection[InspectionDc],
+                SettlingSheetName = _sheetByInspection[InspectionSettling],
                 Maker = Maker, Owner = Owner,
                 GroupNames = GroupNames.Select(g => g.Name).ToList(),
             };

@@ -361,6 +361,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="FRA" Command="{Binding SelectFraCommand}" Tag="{Binding IsFra}" Style="{StaticResource Fh.Segment}"/>
                         <Button Content="DC Sensitivity" Command="{Binding SelectDcCommand}" Tag="{Binding IsDc}" Style="{StaticResource Fh.Segment}"/>
+                        <Button Content="Settling Time" Command="{Binding SelectSettlingCommand}" Tag="{Binding IsSettling}" Style="{StaticResource Fh.Segment}"/>
                     </StackPanel>
                 </Border>
 
@@ -373,6 +374,8 @@
                 <!-- 검사 항목마다 콤보를 따로 둔다 (목록을 바꾸면 선택이 사라지는 문제 방지) -->
                 <ComboBox Grid.Column="7" ItemsSource="{Binding FraSheetOptions}" SelectedItem="{Binding FraSheetName}"
                           Visibility="{Binding IsFra, Converter={StaticResource BoolToVis}}"/>
+                <ComboBox Grid.Column="7" ItemsSource="{Binding SettlingSheetOptions}" SelectedItem="{Binding SettlingSheetName}"
+                          Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"/>
                 <ComboBox Grid.Column="7" ItemsSource="{Binding DcSheetOptions}" SelectedItem="{Binding DcSheetName}"
                           Visibility="{Binding IsDc, Converter={StaticResource BoolToVis}}"/>
             </Grid>
@@ -437,7 +440,7 @@
                                      Text="{Binding Opinion, UpdateSourceTrigger=PropertyChanged}"/>
 
                             <Border Grid.Row="7" Grid.ColumnSpan="8" BorderBrush="{StaticResource Fh.Line}" BorderThickness="0,1,0,0" Padding="0,12,0,0"
-                                    Visibility="{Binding IsFra, Converter={StaticResource BoolToVis}}">
+                                    Visibility="{Binding UsesGroups, Converter={StaticResource BoolToVis}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="그룹 이름" Width="76" Style="{StaticResource Fh.Label}"/>
                                     <ItemsControl ItemsSource="{Binding GroupNames}">
@@ -467,6 +470,8 @@
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="축별 시료와 그룹" Style="{StaticResource Fh.SectionTitle}"
                                        Visibility="{Binding IsFra, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="0" Text="축별 시료 · 그룹 · 조건 · 대표 파형" Style="{StaticResource Fh.SectionTitle}"
+                                       Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="축별 시료와 대표 파형" Style="{StaticResource Fh.SectionTitle}"
                                        Visibility="{Binding IsDc, Converter={StaticResource BoolToVis}}"/>
 
@@ -618,6 +623,127 @@
                                     </DataTemplate>
                                 </TabControl.ContentTemplate>
                             </TabControl>
+
+                            <!-- Settling Time: 그룹 지정 + 조건 체크 + 대표 시료 -->
+                            <TabControl Grid.Row="1" ItemsSource="{Binding SettlingAxes}" SelectedItem="{Binding SelectedSettlingAxis}"
+                                        Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"
+                                        BorderThickness="0" Padding="0" Background="Transparent"
+                                        ItemContainerStyle="{StaticResource Fh.AxisTab}">
+                                <TabControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="12"
+                                                   Foreground="{Binding Tag, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+                                    </DataTemplate>
+                                </TabControl.ItemTemplate>
+                                <TabControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="8"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="8"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- 도구 줄 -->
+                                            <DockPanel Grid.Row="0" LastChildFill="False">
+                                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                                    <Button Content="↓  현재 Settling 결과 가져오기" Style="{StaticResource Fh.Btn.Accent}"
+                                                            Command="{Binding ImportCommand}"
+                                                            ToolTip="메인 창에서 마지막으로 Export 한 SETTLING TIME 결과를 이 축으로 가져옵니다."/>
+                                                    <Button Content="전체 선택" Style="{StaticResource Fh.Btn}"
+                                                            Command="ApplicationCommands.SelectAll" CommandTarget="{Binding ElementName=SettlingGrid}"/>
+                                                    <Button Content="비우기" Style="{StaticResource Fh.Btn}" Command="{Binding ClearCommand}"/>
+                                                </StackPanel>
+                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                    <TextBlock Text="선택 시료 →" Style="{StaticResource Fh.Label}" Margin="0,0,8,0"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[0]}" CommandParameter="{Binding SelectedItems, ElementName=SettlingGrid}"
+                                                            Content="{Binding DataContext.GroupNames[0].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[1]}" CommandParameter="{Binding SelectedItems, ElementName=SettlingGrid}"
+                                                            Content="{Binding DataContext.GroupNames[1].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[2]}" CommandParameter="{Binding SelectedItems, ElementName=SettlingGrid}"
+                                                            Content="{Binding DataContext.GroupNames[2].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[3]}" CommandParameter="{Binding SelectedItems, ElementName=SettlingGrid}"
+                                                            Content="{Binding DataContext.GroupNames[3].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Content="미지정" Style="{StaticResource Fh.Btn.ChipGray}"
+                                                            Command="{Binding UnassignCommand}" CommandParameter="{Binding SelectedItems, ElementName=SettlingGrid}"/>
+                                                    <Button Content="★  대표" Style="{StaticResource Fh.Btn.ChipGray}" Margin="0"
+                                                            Command="{Binding SetRepresentativeCommand}" CommandParameter="{Binding SelectedItems, ElementName=SettlingGrid}"
+                                                            ToolTip="선택한 시료를 대표 파형 시료로 지정합니다."/>
+                                                </StackPanel>
+                                            </DockPanel>
+
+                                            <!-- 조건 체크 -->
+                                            <Border Grid.Row="2" Background="#F9FAFB" BorderBrush="{StaticResource Fh.Line}" BorderThickness="1"
+                                                    CornerRadius="6" Padding="10,6">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Left" Text="표에 넣을 조건" Style="{StaticResource Fh.Label}" VerticalAlignment="Top" Margin="0,3,12,0"/>
+                                                    <ScrollViewer MaxHeight="74" VerticalScrollBarVisibility="Auto">
+                                                        <ItemsControl ItemsSource="{Binding Conditions}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}"
+                                                                              Margin="0,2,14,2" FontSize="12" Foreground="{StaticResource Fh.Text}"/>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </ScrollViewer>
+                                                </DockPanel>
+                                            </Border>
+
+                                            <DataGrid x:Name="SettlingGrid" Grid.Row="4" Style="{StaticResource Fh.Grid}" ItemsSource="{Binding Items}"
+                                                      SelectionMode="Extended" SelectionUnit="FullRow" IsReadOnly="True">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="GROUP" Binding="{Binding GroupName}" Width="90">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                <Setter Property="Foreground" Value="#15803D"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding GroupIndex}" Value="-1">
+                                                                        <Setter Property="Foreground" Value="#9CA3AF"/>
+                                                                        <Setter Property="FontWeight" Value="Normal"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="대표" Binding="{Binding RepresentativeMark}" Width="44">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#15803D"/>
+                                                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="*"/>
+                                                    <DataGridTextColumn Header="JUDGE" Binding="{Binding Judge}" Width="60">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Judge}" Value="NG">
+                                                                        <Setter Property="Foreground" Value="#DC2626"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="SETTLING [ms] (체크한 조건 순서)" Binding="{Binding Values}" Width="1.4*"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <TextBlock Grid.Row="5" Text="{Binding Summary}" Style="{StaticResource Fh.Label}" Margin="2,8,0,0" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </TabControl.ContentTemplate>
+                            </TabControl>
                         </Grid>
                     </Border>
 
@@ -634,6 +760,9 @@
                         <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
                                    Visibility="{Binding IsDc, Converter={StaticResource BoolToVis}}"
                                    Text="① 메인 창에서 축별 폴더를 DC SENSITIVITY 로 Import → Export   ② 해당 축 탭에서 결과 가져오기   ③ 대표 시료 지정 (기본: 첫 파일)   ④ 문서에 추가"/>
+                        <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
+                                   Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"
+                                   Text="① 메인 창에서 SETTLING TIME 으로 Import → Export   ② 축 탭에서 결과 가져오기 (DW 처럼 X/Y 가 한 파일이면 OIS X·OIS Y 탭에 각각 가져오기)   ③ 조건 체크 · 그룹 지정 · 대표 시료   ④ 문서에 추가"/>
                         <Button Grid.Column="2" Content="문서에 추가" Style="{StaticResource Fh.Btn.Primary}"
                                 Command="{Binding AppendCommand}"/>
                     </Grid>

@@ -47,3 +47,38 @@ public sealed record DcHistorySample(
 public sealed record DcHistoryAxis(string Axis, IReadOnlyList<DcHistorySample> Samples, DcHistorySample Representative);
 
 public sealed record DcHistoryBuild(HistoryHeader Header, IReadOnlyList<DcHistoryAxis> Axes);
+
+// ---------------- Settling Time ----------------
+
+/// <summary>
+/// 시료 1개의 조건(스텝) 하나에 대한 MeasureHub Settling 결과 + 그래프 재료.
+/// Result / ToleranceBand / Displacement 는 MeasureHub 화면·PNG 와 같은 그래프를 그리는 데 쓴다.
+/// </summary>
+public sealed record SettlingConditionData(
+    string Label,
+    double? SettlingTimeMs,
+    string Judge,
+    IReadOnlyList<SettlingSeries> Series,
+    SettlingResult Result,
+    double ToleranceBand,
+    double Displacement);
+
+public sealed record SettlingHistorySample(string FileName, IReadOnlyList<SettlingConditionData> Conditions)
+{
+    public SettlingConditionData? Find(string label) => Conditions.FirstOrDefault(c => c.Label == label);
+}
+
+/// <summary>
+/// 한 축의 Settling 시료. Conditions = 표·그래프에 넣을 조건(순서대로, 최대 8 / 그래프는 앞 4개),
+/// Groups 순서가 표의 그룹 순서, Representative 는 대표 파형을 그릴 시료.
+/// </summary>
+public sealed record SettlingHistoryAxis(
+    string Axis,
+    IReadOnlyList<string> Conditions,
+    IReadOnlyList<(string GroupName, IReadOnlyList<SettlingHistorySample> Samples)> Groups,
+    SettlingHistorySample Representative);
+
+public sealed record SettlingHistoryBuild(HistoryHeader Header, IReadOnlyList<SettlingHistoryAxis> Axes);
+
+/// <summary>Max Settling Time(ms). 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
+public sealed record SettlingHistorySpec(double? MaxSettlingTimeMs);

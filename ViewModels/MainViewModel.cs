@@ -3139,6 +3139,45 @@ public sealed class MainViewModel : ViewModelBase
             .ToList();
     }
 
+    /// <summary>
+    /// Control Tuning 문서용: 마지막 SETTLING TIME Export 결과를 파일별로 묶어 돌려준다.
+    /// 조건별 값·판정은 SettlingResults, 파형은 PlotFiles.SettlingGroups, Tolerance 는 조건별 Spec 에서 가져온다.
+    /// (그래프 재료는 SavePlotImagesForItem 과 같다. 계산을 다시 하지 않고 표에 나온 값을 그대로 쓴다.)
+    /// </summary>
+    public IReadOnlyList<SettlingHistorySample> GetSettlingHistorySamples()
+    {
+        if (!IsSettlingInspection || SettlingResults.Count == 0)
+            return Array.Empty<SettlingHistorySample>();
+
+        double defaultBand = ParseSpecNumber(SettlingSpec.ToleranceBand) ?? 0;
+        double BandFor(string label)
+            => ParseSpecNumber(SettlingSpec.ConditionTolerances.FirstOrDefault(c => c.GroupLabel == label)?.ToleranceBand) ?? defaultBand;
+
+        var rowsByFile = SettlingResults
+            .GroupBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        return PlotFiles
+            .Where(p => p.IsSettling && rowsByFile.ContainsKey(p.FileName))
+            .Select(p =>
+            {
+                var rows = rowsByFile[p.FileName];
+                var conds = p.SettlingGroups
+                    .Select(g => (g, row: rows.FirstOrDefault(r => r.GroupLabel == g.GroupLabel)))
+                    .Where(x => x.row is not null)
+                    .Select(x => new SettlingConditionData(
+                        x.g.GroupLabel, x.row!.SettlingTimeMs, x.row.Judge, x.g.Series,
+                        new SettlingResult(x.row.Target, x.row.SettlingTimeMs, x.row.Overshoot),
+                        BandFor(x.g.GroupLabel), x.row.Displacement ?? 0))
+                    .ToList();
+                return new SettlingHistorySample(p.FileName, conds);
+            })
+            .Where(s => s.Conditions.Count > 0)
+            .ToList();
+    }
+
+    public SettlingHistorySpec GetSettlingHistorySpec() => new(ParseSpecNumber(SettlingSpec.MaxSettlingTimeMs));
+
     public FraHistorySpec GetFraHistorySpec()
     {
         static double? Parse(string? s)

@@ -35,6 +35,33 @@
 
 ## 최근 확인된 작업
 
+- 2026-10-08: Control Tuning 작성에 Settling Time 추가 (브랜치 `feature/template-report`)
+  - 사용자 결정
+    - 표에 넣을 조건은 화면에서 체크한다(최대 8개).
+    - 그래프는 대표 시료의 조건별 파형(앞 4개 조건)이다.
+    - 표에는 Settling Time 만 넣고 Overshoot 는 넣지 않는다.
+    - FRA 처럼 그룹을 지정한다(최대 4).
+  - 블록(`AF Settling Time` 시트)
+    - 축마다 표 첫 행에 조건 이름을 쓴다. 조건은 장비·축마다 달라서 시트 머리글에 둘 수 없다.
+    - 표: 그룹 순서의 시료 행 + Min/Max/Avg/STDEV. Max Settling Time 초과·N/A 는 빨간색, 대표 시료 파일명 앞에 ★ 를 붙인다.
+    - 그래프: `PlotImageExporter.SaveSettlingConditionPng` 를 칸 크기에 맞춰 렌더링한다(Tolerance 띠 포함, MeasureHub 화면과 동일). 축 최소 높이는 230pt 다.
+  - 화면
+    - 검사 항목에 [Settling Time] 을 추가했다.
+    - 축 탭: 결과 가져오기, 조건 체크(WrapPanel), 그룹 칩, ★ 대표, 표(체크한 조건의 값을 이어서 표시).
+    - 자동 체크: OIS X 탭은 이름에 X 가 단어로 든 조건, OIS Y 탭은 Y(DW 의 X Up / Y Down 등), 그 밖은 앞 8개.
+    - DW 처럼 한 파일에 X/Y 가 함께 있으면 같은 결과를 OIS X, OIS Y 탭에 각각 가져온다.
+  - 데이터: `MainViewModel.GetSettlingHistorySamples()` 가 `SettlingResults`(조건별 값·판정), `PlotFiles.SettlingGroups`(파형), 조건별 Tolerance Spec 을 묶는다. 다시 계산하지 않으며 Export 코드는 수정하지 않았다.
+  - 추가 파일
+    - `Services/ControlTuning/SettlingHistoryWriter.cs`
+    - `ViewModels/SettlingHistoryAxisViewModel.cs`
+    - 모델: `ControlTuningModels.cs` 의 Settling 섹션
+  - 검증
+    - 빌드 오류 0
+    - BaselineCapture 를 master 와 비교한 결과 diff 0
+    - Writer 시험: DW 3파일(OIS X: X Up/Down, OIS Y: Y Up/Down) 블록 → Robocube 3파일(조건 18개 중 8개, 그룹 2개) 블록 → 헤더 편집 → 첫 블록 삭제. Excel 로 열어 정상 표시를 확인했다.
+    - UI 자동화로 Settling 전환과 시트 선택을 확인했다.
+  - 남은 작업: 앱에서 Settling Import→Export→가져오기→추가 실사용 확인(사용자)
+
 - 2026-10-07: Control Tuning 작성에 DC Sensitivity 추가 (브랜치 `feature/template-report`)
   - 사용자 결정: 표 없이 그래프만, 축마다 **대표 파형 + 누적 파형**, 측정 조건은 기록하지 않음
   - 창 맨 위에 검사 항목 세그먼트 [FRA] [DC Sensitivity] 를 추가했다.
