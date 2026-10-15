@@ -111,3 +111,31 @@ public sealed record SinewaveHistoryBuild(HistoryHeader Header, IReadOnlyList<Si
 
 /// <summary>|MaxErr| 상한(code). 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
 public sealed record SinewaveHistorySpec(double? MaxErr);
+
+// ---------------- Circle ----------------
+
+/// <summary>
+/// Circle Test 시료 1개 (MeasureHub CIRCLE TEST 결과 + XY 궤적). MaxErr 는 code.
+/// ConditionHint 는 파일 머리의 Sine Freq / Amplitude(AKM) 또는 파일명의 "6Hz"(DW) 로 만든 조건 이름 제안.
+/// </summary>
+public sealed record CircleHistorySample(
+    string FileName,
+    string Judge,
+    double? MaxErrX,
+    double? MaxErrY,
+    IReadOnlyList<double> ReadVtX,
+    IReadOnlyList<double> ReadVtY,
+    IReadOnlyList<double> HallX,
+    IReadOnlyList<double> HallY,
+    string ConditionHint);
+
+/// <summary>측정 조건 하나 (예: Test1 / 6Hz 85%). Groups 순서가 표의 그룹 순서, Representative 는 대표 궤적 시료.</summary>
+public sealed record CircleHistoryCondition(
+    string Name,
+    IReadOnlyList<(string GroupName, IReadOnlyList<CircleHistorySample> Samples)> Groups,
+    CircleHistorySample Representative);
+
+public sealed record CircleHistoryBuild(HistoryHeader Header, IReadOnlyList<CircleHistoryCondition> Conditions);
+
+/// <summary>|MaxErr| 상한(code, MeasureHub CIRCLE Spec). 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
+public sealed record CircleHistorySpec(double? MaxErr);

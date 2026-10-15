@@ -20,6 +20,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public const string InspectionDc = "DC Sensitivity";
     public const string InspectionSettling = "Settling Time";
     public const string InspectionSinewave = "Sine Wave";
+    public const string InspectionCircle = "Circle";
 
     private static readonly Dictionary<string, string[]> DefaultSheetNames = new()
     {
@@ -27,6 +28,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         [InspectionDc] = ["DC Sens"],
         [InspectionSettling] = ["AF Settling Time"],
         [InspectionSinewave] = ["OIS Sinewave"],
+        [InspectionCircle] = ["OIS Circle"],
     };
 
     private readonly MainViewModel _main;
@@ -37,6 +39,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         [InspectionDc] = "DC Sens",
         [InspectionSettling] = "AF Settling Time",
         [InspectionSinewave] = "OIS Sinewave",
+        [InspectionCircle] = "OIS Circle",
     };
 
     public ControlTuningViewModel(MainViewModel main)
@@ -56,6 +59,9 @@ public sealed class ControlTuningViewModel : ViewModelBase
         for (int i = 1; i <= SinewaveHistoryWriter.MaxConditions; i++)
             SinewaveConditions.Add(new SinewaveConditionViewModel($"Test{i}", this));
         SelectedSinewaveCondition = SinewaveConditions[0];
+        for (int i = 1; i <= CircleHistoryWriter.MaxConditions; i++)
+            CircleConditions.Add(new CircleConditionViewModel($"Test{i}", this));
+        SelectedCircleCondition = CircleConditions[0];
 
         BrowseOutputCommand = new RelayCommand(BrowseOutput);
         AppendCommand = new RelayCommand(Append);
@@ -64,6 +70,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         SelectDcCommand = new RelayCommand(() => Inspection = InspectionDc);
         SelectSettlingCommand = new RelayCommand(() => Inspection = InspectionSettling);
         SelectSinewaveCommand = new RelayCommand(() => Inspection = InspectionSinewave);
+        SelectCircleCommand = new RelayCommand(() => Inspection = InspectionCircle);
         LoadSettings();
         RefreshSheetOptions();
     }
@@ -83,6 +90,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsDc));
             OnPropertyChanged(nameof(IsSettling));
             OnPropertyChanged(nameof(IsSinewave));
+            OnPropertyChanged(nameof(IsCircle));
             OnPropertyChanged(nameof(UsesGroups));
             if (SelectedTabIndex == 1) RefreshBuilds();
         }
@@ -92,12 +100,14 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public bool IsDc => Inspection == InspectionDc;
     public bool IsSettling => Inspection == InspectionSettling;
     public bool IsSinewave => Inspection == InspectionSinewave;
-    /// <summary>그룹 이름 입력칸을 쓰는 검사 (FRA, Settling, Sine Wave).</summary>
-    public bool UsesGroups => IsFra || IsSettling || IsSinewave;
+    public bool IsCircle => Inspection == InspectionCircle;
+    /// <summary>그룹 이름 입력칸을 쓰는 검사 (FRA, Settling, Sine Wave, Circle).</summary>
+    public bool UsesGroups => IsFra || IsSettling || IsSinewave || IsCircle;
     public RelayCommand SelectFraCommand { get; }
     public RelayCommand SelectDcCommand { get; }
     public RelayCommand SelectSettlingCommand { get; }
     public RelayCommand SelectSinewaveCommand { get; }
+    public RelayCommand SelectCircleCommand { get; }
 
     // ---- 문서 / 시트 ----
 
@@ -114,6 +124,10 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public string DcSheetName { get => _sheetByInspection[InspectionDc]; set => SetSheet(InspectionDc, value); }
     public string SettlingSheetName { get => _sheetByInspection[InspectionSettling]; set => SetSheet(InspectionSettling, value); }
     public string SinewaveSheetName { get => _sheetByInspection[InspectionSinewave]; set => SetSheet(InspectionSinewave, value); }
+    public string CircleSheetName { get => _sheetByInspection[InspectionCircle]; set => SetSheet(InspectionCircle, value); }
+
+    private IReadOnlyList<string> _circleSheetOptions = [];
+    public IReadOnlyList<string> CircleSheetOptions { get => _circleSheetOptions; private set { _circleSheetOptions = value; OnPropertyChanged(); } }
 
     private IReadOnlyList<string> _sinewaveSheetOptions = [];
     public IReadOnlyList<string> SinewaveSheetOptions { get => _sinewaveSheetOptions; private set { _sinewaveSheetOptions = value; OnPropertyChanged(); } }
@@ -132,6 +146,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         InspectionFra => nameof(FraSheetName),
         InspectionDc => nameof(DcSheetName),
         InspectionSinewave => nameof(SinewaveSheetName),
+        InspectionCircle => nameof(CircleSheetName),
         _ => nameof(SettlingSheetName),
     };
 
@@ -165,10 +180,12 @@ public sealed class ControlTuningViewModel : ViewModelBase
         DcSheetOptions = Build(InspectionDc);
         SettlingSheetOptions = Build(InspectionSettling);
         SinewaveSheetOptions = Build(InspectionSinewave);
+        CircleSheetOptions = Build(InspectionCircle);
         OnPropertyChanged(nameof(FraSheetName));
         OnPropertyChanged(nameof(DcSheetName));
         OnPropertyChanged(nameof(SettlingSheetName));
         OnPropertyChanged(nameof(SinewaveSheetName));
+        OnPropertyChanged(nameof(CircleSheetName));
     }
 
     public RelayCommand BrowseOutputCommand { get; }
@@ -267,6 +284,40 @@ public sealed class ControlTuningViewModel : ViewModelBase
         return tempDir => SinewaveHistoryWriter.AppendBuild(path, sheet, build, spec, tempDir);
     }
 
+    // ---- Circle ----
+
+    public ObservableCollection<CircleConditionViewModel> CircleConditions { get; } = new();
+
+    private CircleConditionViewModel? _selectedCircleCondition;
+    public CircleConditionViewModel? SelectedCircleCondition { get => _selectedCircleCondition; set { _selectedCircleCondition = value; OnPropertyChanged(); } }
+
+    internal IReadOnlyList<CircleHistorySample> TakeCurrentCircleResults()
+    {
+        var samples = _main.GetCircleHistorySamples();
+        if (samples.Count == 0)
+            Info("가져올 Circle 결과가 없습니다.\n메인 창에서 CIRCLE TEST 검사로 Import → Export 를 먼저 실행하세요.");
+        return samples;
+    }
+
+    /// <summary>Circle 빌드를 검사하고, 문서에 쓰는 동작을 돌려준다 (문제가 있으면 null).</summary>
+    private Action<string>? PrepareCircle()
+    {
+        var conds = CircleConditions.Select(c => c.BuildCondition()).OfType<CircleHistoryCondition>().ToList();
+        if (conds.Count == 0)
+        {
+            Warn("그룹이 지정된 시료가 없습니다.\n조건 탭에서 Circle 결과를 가져온 뒤, 시료를 선택하고 그룹 버튼을 누르세요.");
+            return null;
+        }
+        int unassigned = CircleConditions.Sum(c => c.Items.Count(i => i.GroupIndex < 0));
+        if (unassigned > 0 && !Confirm($"그룹이 지정되지 않은 시료 {unassigned}개는 문서에서 제외됩니다. 계속할까요?"))
+            return null;
+
+        var build = new CircleHistoryBuild(CurrentHeader, conds);
+        var spec = _main.GetCircleHistorySpec();
+        var (path, sheet) = (OutputPath, SheetName);
+        return tempDir => CircleHistoryWriter.AppendBuild(path, sheet, build, spec, tempDir);
+    }
+
     // ---- Settling Time ----
 
     public ObservableCollection<SettlingHistoryAxisViewModel> SettlingAxes { get; } = new();
@@ -349,6 +400,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             InspectionFra => PrepareFra(),
             InspectionDc => PrepareDc(),
             InspectionSinewave => PrepareSinewave(),
+            InspectionCircle => PrepareCircle(),
             _ => PrepareSettling(),
         };
         if (write is null) return;
@@ -510,6 +562,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         public string DcSheetName { get; set; } = "";
         public string SettlingSheetName { get; set; } = "";
         public string SinewaveSheetName { get; set; } = "";
+        public string CircleSheetName { get; set; } = "";
         public string Maker { get; set; } = "";
         public string Owner { get; set; } = "";
         public List<string> GroupNames { get; set; } = new();
@@ -528,6 +581,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(s.DcSheetName)) _sheetByInspection[InspectionDc] = s.DcSheetName;
             if (!string.IsNullOrWhiteSpace(s.SettlingSheetName)) _sheetByInspection[InspectionSettling] = s.SettlingSheetName;
             if (!string.IsNullOrWhiteSpace(s.SinewaveSheetName)) _sheetByInspection[InspectionSinewave] = s.SinewaveSheetName;
+            if (!string.IsNullOrWhiteSpace(s.CircleSheetName)) _sheetByInspection[InspectionCircle] = s.CircleSheetName;
             if (DefaultSheetNames.ContainsKey(s.Inspection)) _inspection = s.Inspection;
             Maker = s.Maker;
             Owner = s.Owner;
@@ -548,6 +602,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
                 SheetName = _sheetByInspection[InspectionFra], DcSheetName = _sheetByInspection[InspectionDc],
                 SettlingSheetName = _sheetByInspection[InspectionSettling],
                 SinewaveSheetName = _sheetByInspection[InspectionSinewave],
+                CircleSheetName = _sheetByInspection[InspectionCircle],
                 Maker = Maker, Owner = Owner,
                 GroupNames = GroupNames.Select(g => g.Name).ToList(),
             };

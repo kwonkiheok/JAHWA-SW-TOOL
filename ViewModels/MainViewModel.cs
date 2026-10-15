@@ -3205,6 +3205,42 @@ public sealed class MainViewModel : ViewModelBase
 
     public SinewaveHistorySpec GetSinewaveHistorySpec() => new(ParseSpecNumber(SinewaveSpec.SpecMaxErr));
 
+    /// <summary>
+    /// Control Tuning 문서용: 마지막 CIRCLE TEST Export 결과(MaxErr X/Y, 판정)와 XY 궤적을 파일별로 돌려준다.
+    /// 조건 이름 제안은 AKM 파일 머리(Sine Freq / Amplitude)를 쓰고, 없으면 파일명의 "6Hz" 같은 표기를 쓴다(DW).
+    /// </summary>
+    public IReadOnlyList<CircleHistorySample> GetCircleHistorySamples()
+    {
+        if (!IsCircleInspection || CircleResults.Count == 0)
+            return Array.Empty<CircleHistorySample>();
+
+        var rows = CircleResults
+            .GroupBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        return PlotFiles
+            .Where(p => p.IsCircleTest && rows.ContainsKey(p.FileName))
+            .Select(p =>
+            {
+                var r = rows[p.FileName];
+                return new CircleHistorySample(p.FileName, r.Judge, r.MaxErrX, r.MaxErrY,
+                    p.CircleReadVtX, p.CircleReadVtY, p.CircleHallX, p.CircleHallY,
+                    ReadCircleConditionHint(p.FullPath));
+            })
+            .ToList();
+    }
+
+    public CircleHistorySpec GetCircleHistorySpec() => new(ParseSpecNumber(CircleSpec.SpecMaxErr));
+
+    private static string ReadCircleConditionHint(string path)
+    {
+        var hint = ReadSinewaveConditionHint(path);   // AKM Circle 머리도 Sine 과 같은 키(Sine Freq / Amplitude X·Y)
+        if (hint.Length > 0) return hint;
+        var m = System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(path), @"(\d+(?:\.\d+)?)\s*hz",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return m.Success ? $"{m.Groups[1].Value}Hz" : "";
+    }
+
     /// <summary>"Sine Freq,6,[HZ]" / "Amplitude X,80,[%]" / "Amplitude Y,80,[%]" → "6Hz 80%" (X·Y 가 다르면 "6Hz X80% Y60%").</summary>
     private static string ReadSinewaveConditionHint(string path)
     {

@@ -35,6 +35,42 @@
 
 ## 최근 확인된 작업
 
+- 2026-10-15: Control Tuning 작성에 Circle 추가 (브랜치 `feature/template-report`)
+  - 사용자 결정
+    - Sine Wave 와 같은 구조다.
+    - 그래프는 대표 시료의 XY 궤적 1장이다(축 0~4096 고정 PNG).
+    - **um 환산은 넣지 않는다.**
+      - 처음에는 양식 2.Spec 식(code / 4095 × stroke 280um)으로 um 열과 조건별 um Spec 을 넣었다.
+      - 시료별 감도를 반영하지 못해 정확하지 않으므로 사용자 요청으로 뺐다.
+    - 판정은 MeasureHub CIRCLE Spec MaxErr(code, 기본 150) 하나로 한다(Sine Wave 와 동일).
+  - 블록 구조(`OIS Circle` 시트): **조건(Test1~4)별 행**
+    - 표: Group / No. / File / MaxErr X[code] / MaxErr Y[code] / Judge + Min/Max/Avg/STDEV
+    - |MaxErr| > Spec 이면 빨간색이다. Judge 는 MeasureHub 판정이다.
+  - 화면
+    - 검사 항목에 [Circle] 을 추가했다.
+    - 조건 탭 Test1~4: 조건 설명, 결과 가져오기, 그룹 칩, ★ 대표.
+    - 조건 설명은 AKM 파일 머리의 Sine Freq·Amplitude 로 자동으로 채운다. DW 는 머리가 없어 파일명의 "6Hz" 를 쓴다(`MainViewModel.ReadCircleConditionHint`).
+  - 추가·수정 파일
+    - `Services/ControlTuning/CircleHistoryWriter.cs` (신규)
+    - `ViewModels/CircleConditionViewModel.cs` (신규)
+    - `Services/ControlTuning/ControlTuningModels.cs` 의 Circle 섹션
+    - `ViewModels/ControlTuningViewModel.cs` 등록: 검사 상수, 기본 시트 `OIS Circle`, 시트 콤보, PrepareCircle, 설정 저장
+    - `ViewModels/MainViewModel.cs`: `GetCircleHistorySamples`, `GetCircleHistorySpec`
+    - `Views/ControlTuningWindow.xaml`
+  - 계산과 Export 는 변경 없음.
+  - 검증
+    - 빌드 오류 0. 앱이 실행 중이라 임시 출력 경로로 빌드했다.
+    - BaselineCapture 를 이전 기준선과 비교한 결과 diff 0.
+    - Writer 시험: 아래 두 빌드를 추가한 뒤 두 번째 블록 헤더를 편집하고 첫 블록을 삭제했다. 정상 동작했다.
+      - 빌드 1: AKM 6Hz 3파일(Test1) + AKM 10Hz 2파일(Test2)
+      - 빌드 2: AKM 2 + DW 1(Test1, 그룹 2개) + DW 10Hz(Test2)
+    - Excel 로 열어 표시를 확인했다. Spec 150 기준으로 AKM 5파일은 NG, DW 2파일은 OK 다.
+  - 열 구성 확인 추가(`CircleHistoryWriter.EnsureHeadsMatch`)
+    - 헤더 행은 시트를 처음 만들 때만 쓴다. 그래서 um 이 있던 시험 버전으로 만든 시트에 추가하면 칸이 한 칸씩 어긋났다(사용자 확인).
+    - 이제 4행 헤더가 현재 형식과 다르면 쓰지 않고 경고한다. 파일은 저장되지 않는다.
+    - 시험: 헤더 한 칸을 예전 형식으로 바꾼 파일에 추가하면 예외가 나고 파일 바이트가 그대로다. 정상 시트에는 계속 추가된다.
+  - 남은 작업: 앱에서 Circle Import → Export → 가져오기 → 추가 실사용 확인(사용자)
+
 - 2026-10-15: CIRCLE TEST 그래프 X/Y 축을 0~4096(512 간격)으로 고정
   - 배경: 축 범위를 파일마다 데이터 중심·반경으로 자동으로 잡아서, 파일과 장비(AKM/DW)마다 축과 눈금이 달라 비교하기 어려웠다.
     - 사용자 결정: Data Type 과 관계없이 12bit 전체 범위로 고정하고, 화면과 PNG 모두 적용한다.
