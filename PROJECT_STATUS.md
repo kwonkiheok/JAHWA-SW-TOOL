@@ -35,6 +35,22 @@
 
 ## 최근 확인된 작업
 
+- 2026-10-14: SINE WAVE AKM 리더가 목표값 열 `ReadVt_X/ReadVt_Y` 도 읽도록 수정
+  - 배경: `SW DATA\OIS\Sinewave\AKM\10840_SineWave_L01.csv` 가 "time[ms]/Posi_X/Hall_X/Diff_X columns were not found" 로 실패했다.
+    - 이 로그는 목표값 열 이름이 `Posi_*` 가 아니라 `ReadVt_*` 다(Circle Test 와 같은 이름). 나머지 구조는 기존 AKM Sine 로그와 같다.
+  - 수정 파일: `Services/Sinewave/AkmSinewaveReader.cs`
+    - 목표값 열을 `FindColumn(headerCells, "Posi_X", "ReadVt_X")` 처럼 두 이름으로 찾는다. Y 도 같다.
+    - `Posi_*` 가 있으면 기존처럼 그 열을 쓴다.
+  - 화면 Spec 패널의 헤더 규칙 문구도 고쳤다(`Services/Sinewave/SinewaveDataTypes.cs`, AKM).
+    - 규칙: "time[ms], Posi_X/Y (또는 ReadVt_X/Y), Hall_X/Y, Diff_X/Y"
+    - 입력: "Posi(ReadVt)_X/Hall_X, …"
+  - 검증
+    - BaselineCapture 를 master 와 비교했다. 바뀐 줄은 해당 파일 1줄(ERROR → n=1665 MaxErrX=44 MaxErrY=94)과 성공 건수 줄뿐이다(260/1 → 261/0).
+    - 계산값은 파일 머리의 장비 기록값(`Max Err X 44 / Y 94`)과 일치한다.
+  - `tools/baseline_before.txt` 를 현재 결과로 갱신했다.
+    - 이 파일은 이전 커밋들(SCAN AKM 기준선 통일, DW SETTLING 등) 이후 갱신되지 않아 master 결과와도 14줄 달랐다. 이번에 최신 결과로 맞췄다.
+  - 참고: 이 파일 머리의 Threshold 는 150 code 다. MeasureHub Sine Spec 기본값 50 기준으로는 Y(94) 가 NG 다(기존 판정 규칙 그대로).
+
 - 2026-10-12: Control Tuning 작성에 Sine Wave 추가 (브랜치 `feature/template-report`)
   - 사용자 결정
     - 측정 조건별로 행을 나눈다.

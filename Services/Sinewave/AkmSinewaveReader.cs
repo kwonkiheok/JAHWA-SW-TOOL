@@ -42,17 +42,18 @@ public static class AkmSinewaveReader
             throw new InvalidOperationException("'time[ms]' header row was not found.");
 
         int timeIndex = FindColumn(headerCells, "time[ms]");
-        int posiXIndex = FindColumn(headerCells, "Posi_X");
+        // 목표값 열은 Posi_* 가 기본이고, 일부 AKM 로그(예: 10840_SineWave_L01)는 ReadVt_* 로 기록한다(Circle Test 와 같은 이름).
+        int posiXIndex = FindColumn(headerCells, "Posi_X", "ReadVt_X");
         int hallXIndex = FindColumn(headerCells, "Hall_X");
         int diffXIndex = FindColumn(headerCells, "Diff_X");
-        int posiYIndex = FindColumn(headerCells, "Posi_Y");
+        int posiYIndex = FindColumn(headerCells, "Posi_Y", "ReadVt_Y");
         int hallYIndex = FindColumn(headerCells, "Hall_Y");
         int diffYIndex = FindColumn(headerCells, "Diff_Y");
 
         if (timeIndex < 0 || posiXIndex < 0 || hallXIndex < 0 || diffXIndex < 0)
-            throw new InvalidOperationException("time[ms]/Posi_X/Hall_X/Diff_X columns were not found.");
+            throw new InvalidOperationException("time[ms]/Posi_X(ReadVt_X)/Hall_X/Diff_X columns were not found.");
         if (posiYIndex < 0 || hallYIndex < 0 || diffYIndex < 0)
-            throw new InvalidOperationException("Posi_Y/Hall_Y/Diff_Y columns were not found.");
+            throw new InvalidOperationException("Posi_Y(ReadVt_Y)/Hall_Y/Diff_Y columns were not found.");
 
         var time = new List<double>();
         var posiX = new List<double>();

@@ -15,9 +15,10 @@ public interface ISinewaveDataTypeHandler
 public sealed class AkmSinewaveDataTypeHandler : ISinewaveDataTypeHandler
 {
     public string Name => "AKM";
-    public string InputHeaderDisplay => "Posi_X/Hall_X, Posi_Y/Hall_Y";
+    // 목표값 열은 Posi_* 또는 ReadVt_* (AkmSinewaveReader 가 둘 다 읽는다)
+    public string InputHeaderDisplay => "Posi(ReadVt)_X/Hall_X, Posi(ReadVt)_Y/Hall_Y";
     public string OutputHeaderDisplay => "Diff = Posi - Hall (MaxErr 재계산)";
-    public string HeaderRuleDescription => "time[ms], Posi_X/Y, Hall_X/Y, Diff_X/Y (X/Y 판정)";
+    public string HeaderRuleDescription => "time[ms], Posi_X/Y (또는 ReadVt_X/Y), Hall_X/Y, Diff_X/Y (X/Y 판정)";
     public string MetricRuleDescription => "전체 구간 중 |Diff| 최대값(MaxErr) — X/Y 각각 계산";
 
     public SinewaveReadResult Read(string file) => AkmSinewaveReader.Read(file);
