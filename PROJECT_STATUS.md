@@ -35,6 +35,24 @@
 
 ## 최근 확인된 작업
 
+- 2026-10-15: CIRCLE TEST 그래프 X/Y 축을 0~4096(512 간격)으로 고정
+  - 배경: 축 범위를 파일마다 데이터 중심·반경으로 자동으로 잡아서, 파일과 장비(AKM/DW)마다 축과 눈금이 달라 비교하기 어려웠다.
+    - 사용자 결정: Data Type 과 관계없이 12bit 전체 범위로 고정하고, 화면과 PNG 모두 적용한다.
+  - 수정 파일
+    - `Services/Rendering/GdiPlotRenderer.cs`
+      - 상수 `CircleAxisMin/Max/Step`(0/4096/512)을 추가했다.
+      - `SaveCirclePlotPng` 가 고정 축과 고정 눈금(9개)을 쓰고, 십자선을 2048 에 그린다.
+      - 범위 밖 점은 DC 축 고정 때와 같이 `plotRect` 로 클리핑한다.
+    - `Views/PlotView.xaml.cs` `RefreshCirclePlot`
+      - `SetLimits(0, 4096, 0, 4096)` 과 `NumericFixedInterval(512)` 눈금을 쓴다.
+      - 십자선은 2048 이다.
+  - 검증
+    - 빌드 오류 0.
+    - BaselineCapture 를 이전 기준선과 비교한 결과 diff 0 이다(계산 무변경).
+    - 임시 콘솔로 AKM `MD10840_CircleTest_6HZ_L1` 과 DW `동운_DW9828_Circle_6Hz` PNG 를 만들었다. 두 그림 모두 0~4096 / 512 간격 축으로 나오는 것을 눈으로 확인했다.
+  - 참고: 4096 을 넘거나 0 보다 작은 값은 잘린다. 샘플 범위는 AKM 약 244~3854, DW 약 448~3647 이다.
+  - 남은 작업: 앱 화면에서 축 고정 확인(사용자).
+
 - 2026-10-15: CIRCLE TEST 에 `DW` Data Type 추가
   - 배경: `SW DATA\OIS\circletest\DW\동운_DW9828_Circle_6Hz.csv`, `_10Hz.csv` 샘플이 있었지만 AKM 리더만 있어 읽을 수 없었다.
     - DW 파일은 1행이 컬럼 헤더다: `X/Y Target(@12bit)`, `X/Y Position(@12bit)`, `X/Y Diff(@12bit)`.

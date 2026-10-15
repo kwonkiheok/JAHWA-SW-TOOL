@@ -20,6 +20,12 @@ public static class GdiPlotRenderer
     private static readonly List<double> DcFixedXTicks = [0, 1000, 2000, 3000, 4000, 5000];
     private static readonly List<double> DcFixedYTicks = [0, 1000, 2000, 3000, 4000, 5000];
 
+    // CIRCLE 그래프 X/Y축은 Data Type(AKM/DW)과 관계없이 12bit 전체 범위 0~4096(512 간격)으로 고정한다.
+    // 화면(PlotView.RefreshCirclePlot)도 같은 값을 쓴다. 범위를 벗어난 점은 plotRect 로 클리핑된다.
+    public const double CircleAxisMin = 0;
+    public const double CircleAxisMax = 4096;
+    public const double CircleAxisStep = 512;
+
     public static void SaveDcPlotPng(
         IReadOnlyList<double> upX,
         IReadOnlyList<double> upY,
@@ -603,8 +609,8 @@ public static class GdiPlotRenderer
         bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
     }
 
-    // CIRCLE TEST: TILT의 4분면 산점도(SaveTiltPlotPng)와 동일한 방식이지만, 원점 대신 데이터 중심을
-    // 기준으로 축 범위를 잡고 Up/Down 대신 Target(ReadVt) vs Hall을 겹쳐 그린다.
+    // CIRCLE TEST: TILT의 4분면 산점도(SaveTiltPlotPng)와 동일한 방식으로 Target(ReadVt) vs Hall을 겹쳐 그린다.
+    // 축은 CircleAxisMin~Max 고정이고 십자선은 그 중앙(2048)이다.
     public static void SaveCirclePlotPng(
         IReadOnlyList<double> readVtX,
         IReadOnlyList<double> readVtY,
@@ -644,19 +650,11 @@ public static class GdiPlotRenderer
             return;
         }
 
-        double centerX = (allX.Max() + allX.Min()) / 2.0;
-        double centerY = (allY.Max() + allY.Min()) / 2.0;
-        double radius = Math.Max(
-            allX.Select(v => Math.Abs(v - centerX)).DefaultIfEmpty(1).Max(),
-            allY.Select(v => Math.Abs(v - centerY)).DefaultIfEmpty(1).Max());
-        if (radius <= 0 || double.IsNaN(radius) || double.IsInfinity(radius))
-            radius = 1;
-        radius *= 1.15;
-
-        double minX = centerX - radius, maxX = centerX + radius, minY = centerY - radius, maxY = centerY + radius;
-        double tickStep = Math.Max(1, Math.Round(radius / 4));
+        double minX = CircleAxisMin, maxX = CircleAxisMax, minY = CircleAxisMin, maxY = CircleAxisMax;
+        double centerX = (CircleAxisMin + CircleAxisMax) / 2.0;
+        double centerY = centerX;
         var ticks = new List<double>();
-        for (double v = Math.Ceiling(minX / tickStep) * tickStep; v <= maxX; v += tickStep)
+        for (double v = CircleAxisMin; v <= CircleAxisMax; v += CircleAxisStep)
             ticks.Add(v);
 
         if (!string.IsNullOrWhiteSpace(title))
@@ -688,8 +686,10 @@ public static class GdiPlotRenderer
         g.DrawLine(crosshairPen, plotRect.Left, originY, plotRect.Right, originY);
         g.DrawLine(crosshairPen, originX, plotRect.Top, originX, plotRect.Bottom);
 
+        g.SetClip(plotRect);
         DrawSeries(g, targetPen, readVtX, readVtY, plotRect, minX, maxX, minY, maxY, drawMarkers: false);
         DrawSeries(g, hallPen, hallX, hallY, plotRect, minX, maxX, minY, maxY, drawMarkers: false);
+        g.ResetClip();
 
         const string xLabel = "X";
         const string yLabel = "Y";

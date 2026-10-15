@@ -643,21 +643,21 @@ public partial class PlotView : System.Windows.Controls.UserControl
         if (item is null || item.CircleTimeMs.Count == 0)
             return;
 
-        var allX = item.CircleReadVtX.Concat(item.CircleHallX).ToList();
-        var allY = item.CircleReadVtY.Concat(item.CircleHallY).ToList();
-        if (allX.Count == 0 || allY.Count == 0)
-            return;
+        // 축은 Data Type 과 관계없이 PNG(GdiPlotRenderer.SaveCirclePlotPng)와 같은 0~4096(512 간격) 고정.
+        const double axisMin = GdiPlotRenderer.CircleAxisMin;
+        const double axisMax = GdiPlotRenderer.CircleAxisMax;
+        double centerX = (axisMin + axisMax) / 2.0;
+        double centerY = centerX;
 
-        double centerX = (allX.Max() + allX.Min()) / 2.0;
-        double centerY = (allY.Max() + allY.Min()) / 2.0;
-        double radius = Math.Max(
-            allX.Select(v => Math.Abs(v - centerX)).DefaultIfEmpty(1).Max(),
-            allY.Select(v => Math.Abs(v - centerY)).DefaultIfEmpty(1).Max());
-        if (radius <= 0 || double.IsNaN(radius) || double.IsInfinity(radius))
-            radius = 1;
-        radius *= 1.15;
-
-        plt.Axes.SetLimits(centerX - radius, centerX + radius, centerY - radius, centerY + radius);
+        plt.Axes.SetLimits(axisMin, axisMax, axisMin, axisMax);
+        plt.Axes.Bottom.TickGenerator = new NumericFixedInterval(GdiPlotRenderer.CircleAxisStep)
+        {
+            LabelFormatter = x => x.ToString("0")
+        };
+        plt.Axes.Left.TickGenerator = new NumericFixedInterval(GdiPlotRenderer.CircleAxisStep)
+        {
+            LabelFormatter = x => x.ToString("0")
+        };
 
         var h0 = plt.Add.HorizontalLine(centerY);
         h0.Color = Colors.Gray.WithOpacity(0.6);
