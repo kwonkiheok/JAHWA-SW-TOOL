@@ -1,6 +1,6 @@
 # MeasureHub 작업 현황
 
-최종 갱신: 2026-10-07
+최종 갱신: 2026-10-15
 
 ## 프로젝트 개요
 
@@ -34,6 +34,29 @@
   - 그래프는 ScottPlot Multiplot으로 X축/Y축 패널을 위/아래로 분리, 각 패널 안에서 Posi(target)와 Hall(실제)을 같은 왼쪽 축 스케일로 겹쳐 그리고 Diff는 오른쪽 축(+±Spec 점선)에 표시(최초 구현은 X만 단일 패널이었으나 사용자 피드백으로 X/Y 분리 + Posi/Hall 오버랩 강화)
 
 ## 최근 확인된 작업
+
+- 2026-10-15: CIRCLE TEST 에 `DW` Data Type 추가
+  - 배경: `SW DATA\OIS\circletest\DW\동운_DW9828_Circle_6Hz.csv`, `_10Hz.csv` 샘플이 있었지만 AKM 리더만 있어 읽을 수 없었다.
+    - DW 파일은 1행이 컬럼 헤더다: `X/Y Target(@12bit)`, `X/Y Position(@12bit)`, `X/Y Diff(@12bit)`.
+    - AKM 과 달리 전문(Freq·Amplitude·Threshold)과 시간 컬럼이 없다. 한 파일이 1 cycle(약 100 point)이다.
+  - 수정 파일
+    - `Services/Circle/DwCircleTestReader.cs` (신규)
+      - Target/Position X·Y 4개가 모두 있는 행을 헤더 행으로 본다(`DwSinewaveReader` 와 같은 규칙).
+      - Target → ReadVt, Position → Hall 로 담는다. 시간은 행 인덱스(0, 1, 2 …)다.
+      - Diff 는 파일 값을 쓰고, Diff 컬럼이 없으면 Target - Position 으로 계산한다. 샘플의 파일 Diff 는 Target - Position 과 일치한다.
+    - `Services/Circle/CircleTestDataTypes.cs`: `DwCircleTestDataTypeHandler` 등록. Spec 패널 Data Type 목록에 DW 가 나온다.
+    - `tools/BaselineCapture/Program.cs`: CIRCLE 을 AKM·DW 두 폴더 모두 돌도록 변경.
+  - 계산·판정·PNG·Export 는 변경 없음. 기존 `CircleTestMetrics`(max|Diff|)와 `SaveCirclePlotPng`(XY 궤적)를 그대로 쓴다.
+  - 검증
+    - 빌드 오류 0. 앱이 실행 중이라 기본 출력 경로 대신 임시 경로로 빌드했다.
+    - BaselineCapture 를 이전 기준선과 비교했다. 추가된 줄은 DW Circle 2줄뿐이다(261 → 263건, 실패 0).
+      - 6Hz: n=101 MaxErrX=86 MaxErrY=70
+      - 10Hz: n=101 MaxErrX=132 MaxErrY=107
+    - `tools/baseline_before.txt` 를 갱신했다.
+  - 남은 작업
+    - 앱에서 DW 선택 → Import → Export 실사용 확인(사용자). PNG 궤적 모양은 아직 눈으로 확인하지 않았다.
+    - DW 값은 Target - Position 기준이다. DW Sine 처럼 Target 위상 앞섬이 섞였는지, AKM 과 같은 Spec(150 code)으로 판정해도 되는지 확인이 필요하다.
+    - Control Tuning 작성에 Circle 추가(계획만 있음).
 
 - 2026-10-14: SINE WAVE AKM 리더가 목표값 열 `ReadVt_X/ReadVt_Y` 도 읽도록 수정
   - 배경: `SW DATA\OIS\Sinewave\AKM\10840_SineWave_L01.csv` 가 "time[ms]/Posi_X/Hall_X/Diff_X columns were not found" 로 실패했다.

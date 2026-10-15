@@ -185,19 +185,24 @@ foreach (var (dtName, dir) in new[]
 }
 
 // ── CIRCLE TEST ──────────────────────────────────────────────────────────────
+foreach (var (dtName, dir) in new[]
 {
-    var handler = CircleTestDataTypeRegistry.Get("AKM");
-    foreach (var f in Files(Path.Combine(dataRoot, @"OIS\circletest\AKM")))
+    ("AKM", Path.Combine(dataRoot, @"OIS\circletest\AKM")),
+    ("DW",  Path.Combine(dataRoot, @"OIS\circletest\DW")),
+})
+{
+    var handler = CircleTestDataTypeRegistry.Get(dtName);
+    foreach (var f in Files(dir))
     {
         try
         {
             var read = handler.Read(f);
             var m = handler.ComputeMetrics(read);
-            Line("CIRCLE", "AKM", Name(f),
+            Line("CIRCLE", dtName, Name(f),
                 $"n={read.TimeMs.Count} MaxErrX={N2(m.MaxErrX)} MaxErrY={N2(m.MaxErrY)}");
             okCount++;
         }
-        catch (Exception ex) { Fail("CIRCLE", "AKM", Name(f), ex); }
+        catch (Exception ex) { Fail("CIRCLE", dtName, Name(f), ex); }
     }
 }
 
