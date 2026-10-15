@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -19,12 +19,14 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public const string InspectionFra = "FRA";
     public const string InspectionDc = "DC Sensitivity";
     public const string InspectionSettling = "Settling Time";
+    public const string InspectionSinewave = "Sine Wave";
 
     private static readonly Dictionary<string, string[]> DefaultSheetNames = new()
     {
         [InspectionFra] = ["OL-FRA (Room Temp)", "OL-FRA (High Temp)", "Plant-FRA"],
         [InspectionDc] = ["DC Sens"],
         [InspectionSettling] = ["AF Settling Time"],
+        [InspectionSinewave] = ["OIS Sinewave"],
     };
 
     private readonly MainViewModel _main;
@@ -34,6 +36,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         [InspectionFra] = "OL-FRA (Room Temp)",
         [InspectionDc] = "DC Sens",
         [InspectionSettling] = "AF Settling Time",
+        [InspectionSinewave] = "OIS Sinewave",
     };
 
     public ControlTuningViewModel(MainViewModel main)
@@ -50,6 +53,9 @@ public sealed class ControlTuningViewModel : ViewModelBase
         SelectedAxis = Axes[^1];   // 보통 AF 부터 측정한다
         SelectedDcAxis = DcAxes[^1];
         SelectedSettlingAxis = SettlingAxes[^1];
+        for (int i = 1; i <= SinewaveHistoryWriter.MaxConditions; i++)
+            SinewaveConditions.Add(new SinewaveConditionViewModel($"Test{i}", this));
+        SelectedSinewaveCondition = SinewaveConditions[0];
 
         BrowseOutputCommand = new RelayCommand(BrowseOutput);
         AppendCommand = new RelayCommand(Append);
@@ -57,6 +63,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         SelectFraCommand = new RelayCommand(() => Inspection = InspectionFra);
         SelectDcCommand = new RelayCommand(() => Inspection = InspectionDc);
         SelectSettlingCommand = new RelayCommand(() => Inspection = InspectionSettling);
+        SelectSinewaveCommand = new RelayCommand(() => Inspection = InspectionSinewave);
         LoadSettings();
         RefreshSheetOptions();
     }
@@ -75,6 +82,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsFra));
             OnPropertyChanged(nameof(IsDc));
             OnPropertyChanged(nameof(IsSettling));
+            OnPropertyChanged(nameof(IsSinewave));
             OnPropertyChanged(nameof(UsesGroups));
             if (SelectedTabIndex == 1) RefreshBuilds();
         }
@@ -83,11 +91,13 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public bool IsFra => Inspection == InspectionFra;
     public bool IsDc => Inspection == InspectionDc;
     public bool IsSettling => Inspection == InspectionSettling;
-    /// <summary>그룹 이름 입력칸을 쓰는 검사 (FRA, Settling).</summary>
-    public bool UsesGroups => IsFra || IsSettling;
+    public bool IsSinewave => Inspection == InspectionSinewave;
+    /// <summary>그룹 이름 입력칸을 쓰는 검사 (FRA, Settling, Sine Wave).</summary>
+    public bool UsesGroups => IsFra || IsSettling || IsSinewave;
     public RelayCommand SelectFraCommand { get; }
     public RelayCommand SelectDcCommand { get; }
     public RelayCommand SelectSettlingCommand { get; }
+    public RelayCommand SelectSinewaveCommand { get; }
 
     // ---- 문서 / 시트 ----
 
@@ -103,6 +113,10 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public string FraSheetName { get => _sheetByInspection[InspectionFra]; set => SetSheet(InspectionFra, value); }
     public string DcSheetName { get => _sheetByInspection[InspectionDc]; set => SetSheet(InspectionDc, value); }
     public string SettlingSheetName { get => _sheetByInspection[InspectionSettling]; set => SetSheet(InspectionSettling, value); }
+    public string SinewaveSheetName { get => _sheetByInspection[InspectionSinewave]; set => SetSheet(InspectionSinewave, value); }
+
+    private IReadOnlyList<string> _sinewaveSheetOptions = [];
+    public IReadOnlyList<string> SinewaveSheetOptions { get => _sinewaveSheetOptions; private set { _sinewaveSheetOptions = value; OnPropertyChanged(); } }
 
     private IReadOnlyList<string> _fraSheetOptions = [];
     public IReadOnlyList<string> FraSheetOptions { get => _fraSheetOptions; private set { _fraSheetOptions = value; OnPropertyChanged(); } }
@@ -117,6 +131,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
     {
         InspectionFra => nameof(FraSheetName),
         InspectionDc => nameof(DcSheetName),
+        InspectionSinewave => nameof(SinewaveSheetName),
         _ => nameof(SettlingSheetName),
     };
 
@@ -149,9 +164,11 @@ public sealed class ControlTuningViewModel : ViewModelBase
         FraSheetOptions = Build(InspectionFra);
         DcSheetOptions = Build(InspectionDc);
         SettlingSheetOptions = Build(InspectionSettling);
+        SinewaveSheetOptions = Build(InspectionSinewave);
         OnPropertyChanged(nameof(FraSheetName));
         OnPropertyChanged(nameof(DcSheetName));
         OnPropertyChanged(nameof(SettlingSheetName));
+        OnPropertyChanged(nameof(SinewaveSheetName));
     }
 
     public RelayCommand BrowseOutputCommand { get; }
@@ -214,6 +231,40 @@ public sealed class ControlTuningViewModel : ViewModelBase
         if (samples.Count == 0)
             Info("가져올 FRA 결과가 없습니다.\n메인 창에서 FRA 검사로 Import → Export 를 먼저 실행하세요.");
         return samples;
+    }
+
+    // ---- Sine Wave ----
+
+    public ObservableCollection<SinewaveConditionViewModel> SinewaveConditions { get; } = new();
+
+    private SinewaveConditionViewModel? _selectedSinewaveCondition;
+    public SinewaveConditionViewModel? SelectedSinewaveCondition { get => _selectedSinewaveCondition; set { _selectedSinewaveCondition = value; OnPropertyChanged(); } }
+
+    internal IReadOnlyList<SinewaveHistorySample> TakeCurrentSinewaveResults()
+    {
+        var samples = _main.GetSinewaveHistorySamples();
+        if (samples.Count == 0)
+            Info("가져올 Sine Wave 결과가 없습니다.\n메인 창에서 SINE WAVE 검사로 Import → Export 를 먼저 실행하세요.");
+        return samples;
+    }
+
+    /// <summary>Sine Wave 빌드를 검사하고, 문서에 쓰는 동작을 돌려준다 (문제가 있으면 null).</summary>
+    private Action<string>? PrepareSinewave()
+    {
+        var conds = SinewaveConditions.Select(c => c.BuildCondition()).OfType<SinewaveHistoryCondition>().ToList();
+        if (conds.Count == 0)
+        {
+            Warn("그룹이 지정된 시료가 없습니다.\n조건 탭에서 Sine Wave 결과를 가져온 뒤, 시료를 선택하고 그룹 버튼을 누르세요.");
+            return null;
+        }
+        int unassigned = SinewaveConditions.Sum(c => c.Items.Count(i => i.GroupIndex < 0));
+        if (unassigned > 0 && !Confirm($"그룹이 지정되지 않은 시료 {unassigned}개는 문서에서 제외됩니다. 계속할까요?"))
+            return null;
+
+        var build = new SinewaveHistoryBuild(CurrentHeader, conds);
+        var spec = _main.GetSinewaveHistorySpec();
+        var (path, sheet) = (OutputPath, SheetName);
+        return tempDir => SinewaveHistoryWriter.AppendBuild(path, sheet, build, spec, tempDir);
     }
 
     // ---- Settling Time ----
@@ -297,6 +348,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         {
             InspectionFra => PrepareFra(),
             InspectionDc => PrepareDc(),
+            InspectionSinewave => PrepareSinewave(),
             _ => PrepareSettling(),
         };
         if (write is null) return;
@@ -457,6 +509,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         public string SheetName { get; set; } = "";       // FRA 시트 (이전 설정 파일과 같은 이름)
         public string DcSheetName { get; set; } = "";
         public string SettlingSheetName { get; set; } = "";
+        public string SinewaveSheetName { get; set; } = "";
         public string Maker { get; set; } = "";
         public string Owner { get; set; } = "";
         public List<string> GroupNames { get; set; } = new();
@@ -474,6 +527,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(s.SheetName)) _sheetByInspection[InspectionFra] = s.SheetName;
             if (!string.IsNullOrWhiteSpace(s.DcSheetName)) _sheetByInspection[InspectionDc] = s.DcSheetName;
             if (!string.IsNullOrWhiteSpace(s.SettlingSheetName)) _sheetByInspection[InspectionSettling] = s.SettlingSheetName;
+            if (!string.IsNullOrWhiteSpace(s.SinewaveSheetName)) _sheetByInspection[InspectionSinewave] = s.SinewaveSheetName;
             if (DefaultSheetNames.ContainsKey(s.Inspection)) _inspection = s.Inspection;
             Maker = s.Maker;
             Owner = s.Owner;
@@ -493,6 +547,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
                 OutputPath = OutputPath, Inspection = Inspection,
                 SheetName = _sheetByInspection[InspectionFra], DcSheetName = _sheetByInspection[InspectionDc],
                 SettlingSheetName = _sheetByInspection[InspectionSettling],
+                SinewaveSheetName = _sheetByInspection[InspectionSinewave],
                 Maker = Maker, Owner = Owner,
                 GroupNames = GroupNames.Select(g => g.Name).ToList(),
             };

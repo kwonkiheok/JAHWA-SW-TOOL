@@ -82,3 +82,32 @@ public sealed record SettlingHistoryBuild(HistoryHeader Header, IReadOnlyList<Se
 
 /// <summary>Max Settling Time(ms). 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
 public sealed record SettlingHistorySpec(double? MaxSettlingTimeMs);
+
+// ---------------- Sine Wave ----------------
+
+/// <summary>
+/// Sine Wave 시료 1개 (MeasureHub SINE WAVE 결과 + X/Y 파형).
+/// ConditionHint 는 파일 머리의 Sine Freq / Amplitude 로 만든 조건 이름 제안 (없으면 빈 문자열).
+/// </summary>
+public sealed record SinewaveHistorySample(
+    string FileName,
+    string Judge,
+    double? MaxErrX,
+    double? MaxErrY,
+    IReadOnlyList<double> TimeMs,
+    IReadOnlyList<double> PosiX,
+    IReadOnlyList<double> HallX,
+    IReadOnlyList<double> PosiY,
+    IReadOnlyList<double> HallY,
+    string ConditionHint);
+
+/// <summary>측정 조건 하나 (예: Test1 / 6Hz 80%). Groups 순서가 표의 그룹 순서, Representative 는 대표 파형 시료.</summary>
+public sealed record SinewaveHistoryCondition(
+    string Name,
+    IReadOnlyList<(string GroupName, IReadOnlyList<SinewaveHistorySample> Samples)> Groups,
+    SinewaveHistorySample Representative);
+
+public sealed record SinewaveHistoryBuild(HistoryHeader Header, IReadOnlyList<SinewaveHistoryCondition> Conditions);
+
+/// <summary>|MaxErr| 상한(code). 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
+public sealed record SinewaveHistorySpec(double? MaxErr);

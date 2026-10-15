@@ -3178,6 +3178,58 @@ public sealed class MainViewModel : ViewModelBase
 
     public SettlingHistorySpec GetSettlingHistorySpec() => new(ParseSpecNumber(SettlingSpec.MaxSettlingTimeMs));
 
+    /// <summary>
+    /// Control Tuning 문서용: 마지막 SINE WAVE Export 결과(MaxErr X/Y, 판정)와 X/Y 파형을 파일별로 돌려준다.
+    /// 조건 이름 제안은 파일 머리의 Sine Freq / Amplitude 로 만든다(AKM 형식). 없으면 빈 문자열.
+    /// </summary>
+    public IReadOnlyList<SinewaveHistorySample> GetSinewaveHistorySamples()
+    {
+        if (!IsSinewaveInspection || SinewaveResults.Count == 0)
+            return Array.Empty<SinewaveHistorySample>();
+
+        var rows = SinewaveResults
+            .GroupBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        return PlotFiles
+            .Where(p => p.IsSinewave && rows.ContainsKey(p.FileName))
+            .Select(p =>
+            {
+                var r = rows[p.FileName];
+                return new SinewaveHistorySample(p.FileName, r.Judge, r.MaxErrX, r.MaxErrY,
+                    p.SinewaveTimeMs, p.SinewavePosiX, p.SinewaveHallX, p.SinewavePosiY, p.SinewaveHallY,
+                    ReadSinewaveConditionHint(p.FullPath));
+            })
+            .ToList();
+    }
+
+    public SinewaveHistorySpec GetSinewaveHistorySpec() => new(ParseSpecNumber(SinewaveSpec.SpecMaxErr));
+
+    /// <summary>"Sine Freq,6,[HZ]" / "Amplitude X,80,[%]" / "Amplitude Y,80,[%]" → "6Hz 80%" (X·Y 가 다르면 "6Hz X80% Y60%").</summary>
+    private static string ReadSinewaveConditionHint(string path)
+    {
+        try
+        {
+            string? freq = null, ampX = null, ampY = null;
+            foreach (var line in File.ReadLines(path).Take(40))
+            {
+                var cells = line.Split(',');
+                if (cells.Length < 2) continue;
+                string key = cells[0].Trim(), val = cells[1].Trim();
+                if (key.Equals("Sine Freq", StringComparison.OrdinalIgnoreCase)) freq = val;
+                else if (key.Equals("Amplitude X", StringComparison.OrdinalIgnoreCase)) ampX = val;
+                else if (key.Equals("Amplitude Y", StringComparison.OrdinalIgnoreCase)) ampY = val;
+            }
+            if (freq is null && ampX is null) return "";
+            string amp = ampX is null ? "" : (ampY is null || ampY == ampX ? $" {ampX}%" : $" X{ampX}% Y{ampY}%");
+            return $"{freq}Hz{amp}".Trim();
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
     public FraHistorySpec GetFraHistorySpec()
     {
         static double? Parse(string? s)

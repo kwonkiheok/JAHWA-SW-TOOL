@@ -35,6 +35,34 @@
 
 ## 최근 확인된 작업
 
+- 2026-10-12: Control Tuning 작성에 Sine Wave 추가 (브랜치 `feature/template-report`)
+  - 사용자 결정
+    - 측정 조건별로 행을 나눈다.
+    - 그래프는 대표 시료의 [X]·[Y] 파형 2장이다.
+    - FFT 는 넣지 않는다(MeasureHub 에 기능 없음).
+  - 블록 구조(`OIS Sinewave` 시트)
+    - Sine 파일은 X·Y 가 한 파일에 있고 조건(주파수·진폭)이 파일 묶음마다 다르다. 그래서 축 대신 **조건(Test1~4)별 행**으로 나눈다.
+    - H열은 다른 시트의 Axis 자리인데, 여기서는 조건 이름("Test1" + 줄바꿈 + "6Hz 80%")을 쓴다.
+    - 가져온 조건만 행이 생긴다.
+  - 표와 그래프
+    - 표: Group / No. / File / MaxErr X / MaxErr Y / Judge + Min/Max/Avg/STDEV. |MaxErr| 가 Spec 을 넘으면 빨간색, 대표 시료 앞에 ★ 를 붙인다. 숫자 형식은 0.0 이다(0.## 은 정수가 "99." 로 보였다).
+    - 그래프: `GdiPlotRenderer.SaveSinewaveAxisPlotPng`(1400×700 고정)를 칸 비율에 맞춰 넣는다. 조건 최소 높이는 190pt 다.
+  - 화면
+    - 검사 항목에 [Sine Wave] 를 추가했다.
+    - 조건 탭 Test1~4: 조건 설명 입력, 결과 가져오기, 그룹 칩, ★ 대표.
+    - 조건 설명은 AKM 파일 머리의 `Sine Freq` / `Amplitude X·Y` 로 자동으로 채운다(`MainViewModel.ReadSinewaveConditionHint`). DW 파일에는 이 정보가 없어 직접 입력한다.
+  - 데이터: `MainViewModel.GetSinewaveHistorySamples()` 가 `SinewaveResults`(MaxErr X/Y, 판정)와 `PlotFiles` 의 X/Y 파형을 묶는다. 계산과 Export 는 수정하지 않았다.
+  - 추가 파일
+    - `Services/ControlTuning/SinewaveHistoryWriter.cs`
+    - `ViewModels/SinewaveConditionViewModel.cs`
+    - 모델: `ControlTuningModels.cs` 의 Sine Wave 섹션
+  - 검증
+    - 빌드 오류 0
+    - BaselineCapture 를 master 와 비교한 결과 diff 0
+    - Writer 시험: AKM 6파일(Test1) + DW 7파일(Test2, 그룹 2개) 블록 → 1조건 블록 → 헤더 편집 → 첫 블록 삭제. Excel 로 열어 정상 표시를 확인했다.
+    - UI 자동화로 Sine Wave 전환과 시트 선택을 확인했다.
+  - 남은 작업: 앱에서 Sine Import→Export→가져오기→추가 실사용 확인(사용자)
+
 - 2026-10-08: Control Tuning 작성에 Settling Time 추가 (브랜치 `feature/template-report`)
   - 사용자 결정
     - 표에 넣을 조건은 화면에서 체크한다(최대 8개).
