@@ -1,6 +1,6 @@
 # MeasureHub 작업 현황
 
-최종 갱신: 2026-10-15
+최종 갱신: 2026-10-22
 
 ## 프로젝트 개요
 
@@ -34,6 +34,52 @@
   - 그래프는 ScottPlot Multiplot으로 X축/Y축 패널을 위/아래로 분리, 각 패널 안에서 Posi(target)와 Hall(실제)을 같은 왼쪽 축 스케일로 겹쳐 그리고 Diff는 오른쪽 축(+±Spec 점선)에 표시(최초 구현은 X만 단일 패널이었으나 사용자 피드백으로 X/Y 분리 + Posi/Hall 오버랩 강화)
 
 ## 최근 확인된 작업
+
+- 2026-10-22: Control Tuning 작성에 Square(Center Return) 추가 (브랜치 `feature/template-report`)
+  - 사용자 결정
+    - 표는 Up/Down 4열이다: Settling Up / Settling Down [ms], Overshoot Up / Overshoot Down [code]. 양식 `Test_OIS Center Return` 과 같은 Up/Down 구분이다.
+    - AKM 은 MeasureHub 가 Up/Down 을 합친 값 하나만 내므로 Up·Down 칸을 병합해 한 번만 보인다.
+    - 그래프는 대표 시료의 축별 파형 [X]·[Y] 이다(Target / Value).
+      - DW 는 한 파일의 X·Y 를 쓴다.
+      - AKM(축 1개)은 파일명의 X/Y(예: `_X2`, `X_#1_`, `_Y1`)로 칸을 정하고, 나머지 칸은 비운다.
+    - 판정은 MeasureHub SQUARE Spec(Settling 30ms / Overshoot 170code, 기존 임시값)과 MeasureHub 판정을 그대로 쓴다.
+  - 블록 구조(`OIS Center Return` 시트): Sine/Circle 과 같이 **조건(Test1~4)별 행**
+    - 아래에 Min/Max/Avg/STDEV 행이 있다.
+    - 병합된 AKM 행은 Down 칸이 비므로, Down 통계는 "Down 이 비면 Up 값"을 쓰는 배열 수식(`IF(D="",U,D)`)으로 계산한다.
+    - 열 구성이 다른 시트(예전 형식, 다른 검사 시트)에는 추가하지 않고 경고한다. Circle 과 같은 확인이다.
+  - 화면
+    - 검사 항목에 [Square] 를 추가했다.
+    - 조건 탭 Test1~4 의 목록에 AXIS / SETTLING UP·DN / OVERSHOOT UP·DN / UP/DN(합산·분리) / JUDGE 를 보여 준다.
+    - 조건 설명은 파일 머리의 AKM `amplitude`, DW `condition` 으로 "Amp 400code" 를 자동으로 채운다(`MainViewModel.ReadSquareConditionHint`). 주파수는 머리에 없어 직접 입력한다.
+  - 추가·수정 파일
+    - `Services/ControlTuning/SquareHistoryWriter.cs` (신규)
+    - `ViewModels/SquareConditionViewModel.cs` (신규)
+    - `Services/ControlTuning/ControlTuningModels.cs` 의 Square 섹션
+    - `ViewModels/ControlTuningViewModel.cs` 등록: 검사 상수, 기본 시트, 시트 콤보, PrepareSquare, 설정 저장
+    - `ViewModels/MainViewModel.cs`: `GetSquareHistorySamples`, `GetSquareHistorySpec`, `ReadSquareConditionHint`
+    - `Views/ControlTuningWindow.xaml`
+  - 계산과 Export 는 변경 없음.
+  - 검증
+    - 빌드 오류 0.
+    - Writer 시험: 조건 2개로 블록을 만들었다.
+      - Test1: DW L-1~3, S-4(그룹 2개)
+      - Test2: AKM X2·X3, Y1·Y2(그룹 X/Y)
+      - 이어서 2번째 블록을 추가했다가 삭제했고 정상 동작했다.
+      - 다른 형식 시트에 추가하면 경고가 나고 파일이 그대로인 것을 확인했다.
+    - Excel 로 열어 확인했다.
+      - DW 는 Up/Down 값이 따로 들어간다(L-1: 12/12ms, 3/5code).
+      - AKM 은 병합 칸에 합산값이 들어간다(X2: 16.4ms, 319code → Overshoot NG).
+      - Down 통계가 병합 행도 포함해 계산된다(Min 15.8 / Max 18.4).
+      - [X]·[Y] 파형이 맞는 칸에 들어간다.
+    - 앱 실행 확인: Control Tuning 창에서 [Square] 전환, `OIS Center Return` 시트, Test1~4 탭과 목록 열, 결과가 없을 때의 안내 메시지를 화면 캡처로 확인했다.
+      - 목록의 OVERSHOOT 열 머리글이 잘려 열 너비를 112 로 늘렸다.
+      - Import 폴더 대화상자는 자동화로 경로를 넣을 수 없었다. 그래서 앱에서 Import → Export → 가져오기 흐름은 확인하지 못했다(사용자 확인 필요).
+    - BaselineCapture: 263 → 63건이다.
+      - `D:\ProgramData\DATA`(FRA 샘플 200개) 폴더가 이 PC 에서 없어져 그 줄이 빠진 것이다.
+      - 남은 63줄은 기존과 같다(값 변화 0). 그래서 `baseline_before.txt` 는 갱신하지 않았다.
+  - 남은 작업
+    - 앱에서 Square Import → Export → 가져오기 → 추가 실사용 확인(사용자)
+    - Square Spec 기본값(30ms / 170code)은 여전히 임시값이다. 양식 값은 10ms / 240code 다.
 
 - 2026-10-15: Control Tuning 작성에 Circle 추가 (브랜치 `feature/template-report`)
   - 사용자 결정

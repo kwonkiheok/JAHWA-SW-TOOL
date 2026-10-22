@@ -139,3 +139,32 @@ public sealed record CircleHistoryBuild(HistoryHeader Header, IReadOnlyList<Circ
 
 /// <summary>|MaxErr| 상한(code, MeasureHub CIRCLE Spec). 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
 public sealed record CircleHistorySpec(double? MaxErr);
+
+// ---------------- Square (Center Return) ----------------
+
+/// <summary>
+/// Square Test 시료 1개 (MeasureHub SQUARE TEST 결과 + 축별 파형).
+/// DW 는 Up/Down 을 따로 계산하고, AKM 은 Up/Down 을 합친 값 하나만 있다 → Combined = true 이고 Up·Down 칸에 같은 값이 들어간다.
+/// Axes 는 DW 가 X·Y 2개, AKM 이 1개("Value", 축은 파일명의 X/Y 로 판단).
+/// </summary>
+public sealed record SquareHistorySample(
+    string FileName,
+    string Judge,
+    double? SettlingUpMs,
+    double? OvershootUp,
+    double? SettlingDownMs,
+    double? OvershootDown,
+    bool Combined,
+    IReadOnlyList<SquareAxisSeries> Axes,
+    string ConditionHint);
+
+/// <summary>측정 조건 하나 (예: Test1 / 30Hz Square 400code). Representative 는 대표 파형 시료.</summary>
+public sealed record SquareHistoryCondition(
+    string Name,
+    IReadOnlyList<(string GroupName, IReadOnlyList<SquareHistorySample> Samples)> Groups,
+    SquareHistorySample Representative);
+
+public sealed record SquareHistoryBuild(HistoryHeader Header, IReadOnlyList<SquareHistoryCondition> Conditions);
+
+/// <summary>MeasureHub SQUARE Spec. Settling(ms) / |Overshoot|(code) 상한, 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
+public sealed record SquareHistorySpec(double? MaxSettlingMs, double? MaxOvershoot);

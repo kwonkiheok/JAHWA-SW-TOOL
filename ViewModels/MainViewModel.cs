@@ -3232,6 +3232,65 @@ public sealed class MainViewModel : ViewModelBase
 
     public CircleHistorySpec GetCircleHistorySpec() => new(ParseSpecNumber(CircleSpec.SpecMaxErr));
 
+    /// <summary>
+    /// Control Tuning 문서용: 마지막 SQUARE TEST Export 결과(Settling / Overshoot, 판정)와 축별 파형을 파일별로 돌려준다.
+    /// DW 는 Up/Down 값을 따로, AKM 은 Up/Down 합산값 하나(MaxSettlingMs / MaxOvershoot)만 있어 Up·Down 에 같은 값을 넣는다(Combined).
+    /// </summary>
+    public IReadOnlyList<SquareHistorySample> GetSquareHistorySamples()
+    {
+        if (!IsSquareInspection || SquareResults.Count == 0)
+            return Array.Empty<SquareHistorySample>();
+
+        var rows = SquareResults
+            .GroupBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        return PlotFiles
+            .Where(p => p.IsSquareTest && rows.ContainsKey(p.FileName))
+            .Select(p =>
+            {
+                var r = rows[p.FileName];
+                bool combined = r.MaxSettlingUpMs is null && r.MaxSettlingDownMs is null
+                                && r.MaxOvershootUp is null && r.MaxOvershootDown is null;
+                return combined
+                    ? new SquareHistorySample(p.FileName, r.Judge, r.MaxSettlingMs, r.MaxOvershoot, r.MaxSettlingMs, r.MaxOvershoot,
+                        true, p.SquareAxes, ReadSquareConditionHint(p.FullPath))
+                    : new SquareHistorySample(p.FileName, r.Judge, r.MaxSettlingUpMs, r.MaxOvershootUp, r.MaxSettlingDownMs, r.MaxOvershootDown,
+                        false, p.SquareAxes, ReadSquareConditionHint(p.FullPath));
+            })
+            .ToList();
+    }
+
+    public SquareHistorySpec GetSquareHistorySpec()
+        => new(ParseSpecNumber(SquareSpec.SpecMaxSettlingTimeMs), ParseSpecNumber(SquareSpec.SpecMaxOvershoot));
+
+    /// <summary>
+    /// 파일 머리에서 Square 조건 이름을 만든다.
+    /// AKM "amplitude,400,(code, 12bit)" / DW "condition,400,400" → "Amp 400code" (X·Y 가 다르면 "Amp X400 Y300code"). 없으면 빈 문자열.
+    /// </summary>
+    private static string ReadSquareConditionHint(string path)
+    {
+        try
+        {
+            foreach (var line in File.ReadLines(path).Take(30))
+            {
+                var cells = line.Split(',').Select(c => c.Trim().Trim('"')).ToArray();
+                if (cells.Length < 2) continue;
+                if (cells[0].Equals("amplitude", StringComparison.OrdinalIgnoreCase))
+                    return $"Amp {cells[1]}code";
+                if (cells[0].Equals("condition", StringComparison.OrdinalIgnoreCase))
+                    return cells.Length > 2 && cells[2].Length > 0 && cells[2] != cells[1]
+                        ? $"Amp X{cells[1]} Y{cells[2]}code"
+                        : $"Amp {cells[1]}code";
+            }
+        }
+        catch
+        {
+            // 머리를 못 읽으면 조건 이름은 사용자가 직접 입력한다.
+        }
+        return "";
+    }
+
     private static string ReadCircleConditionHint(string path)
     {
         var hint = ReadSinewaveConditionHint(path);   // AKM Circle 머리도 Sine 과 같은 키(Sine Freq / Amplitude X·Y)

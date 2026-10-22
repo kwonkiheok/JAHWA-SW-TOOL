@@ -364,6 +364,7 @@
                         <Button Content="Settling Time" Command="{Binding SelectSettlingCommand}" Tag="{Binding IsSettling}" Style="{StaticResource Fh.Segment}"/>
                         <Button Content="Sine Wave" Command="{Binding SelectSinewaveCommand}" Tag="{Binding IsSinewave}" Style="{StaticResource Fh.Segment}"/>
                         <Button Content="Circle" Command="{Binding SelectCircleCommand}" Tag="{Binding IsCircle}" Style="{StaticResource Fh.Segment}"/>
+                        <Button Content="Square" Command="{Binding SelectSquareCommand}" Tag="{Binding IsSquare}" Style="{StaticResource Fh.Segment}"/>
                     </StackPanel>
                 </Border>
 
@@ -380,6 +381,8 @@
                           Visibility="{Binding IsSinewave, Converter={StaticResource BoolToVis}}"/>
                 <ComboBox Grid.Column="7" ItemsSource="{Binding CircleSheetOptions}" SelectedItem="{Binding CircleSheetName}"
                           Visibility="{Binding IsCircle, Converter={StaticResource BoolToVis}}"/>
+                <ComboBox Grid.Column="7" ItemsSource="{Binding SquareSheetOptions}" SelectedItem="{Binding SquareSheetName}"
+                          Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"/>
                 <ComboBox Grid.Column="7" ItemsSource="{Binding SettlingSheetOptions}" SelectedItem="{Binding SettlingSheetName}"
                           Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"/>
                 <ComboBox Grid.Column="7" ItemsSource="{Binding DcSheetOptions}" SelectedItem="{Binding DcSheetName}"
@@ -480,6 +483,8 @@
                                        Visibility="{Binding IsSinewave, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="측정 조건별 시료 · 그룹 · 대표 궤적" Style="{StaticResource Fh.SectionTitle}"
                                        Visibility="{Binding IsCircle, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="0" Text="측정 조건별 시료 · 그룹 · 대표 파형" Style="{StaticResource Fh.SectionTitle}"
+                                       Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="축별 시료 · 그룹 · 조건 · 대표 파형" Style="{StaticResource Fh.SectionTitle}"
                                        Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="축별 시료와 대표 파형" Style="{StaticResource Fh.SectionTitle}"
@@ -860,6 +865,123 @@
                                 </TabControl.ContentTemplate>
                             </TabControl>
 
+                            <!-- Square(Center Return): 측정 조건 탭(Test1~4) + 조건 이름 + 그룹 지정 + 대표 시료 -->
+                            <TabControl Grid.Row="1" ItemsSource="{Binding SquareConditions}" SelectedItem="{Binding SelectedSquareCondition}"
+                                        Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"
+                                        BorderThickness="0" Padding="0" Background="Transparent"
+                                        ItemContainerStyle="{StaticResource Fh.AxisTab}">
+                                <TabControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="12"
+                                                   Foreground="{Binding Tag, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+                                    </DataTemplate>
+                                </TabControl.ItemTemplate>
+                                <TabControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="8"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="8"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- 도구 줄 -->
+                                            <DockPanel Grid.Row="0" LastChildFill="False">
+                                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                                    <Button Content="↓  현재 Square 결과 가져오기" Style="{StaticResource Fh.Btn.Accent}"
+                                                            Command="{Binding ImportCommand}"
+                                                            ToolTip="메인 창에서 마지막으로 Export 한 SQUARE TEST 결과를 이 조건으로 가져옵니다."/>
+                                                    <Button Content="전체 선택" Style="{StaticResource Fh.Btn}"
+                                                            Command="ApplicationCommands.SelectAll" CommandTarget="{Binding ElementName=SquareGrid}"/>
+                                                    <Button Content="비우기" Style="{StaticResource Fh.Btn}" Command="{Binding ClearCommand}"/>
+                                                </StackPanel>
+                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                    <TextBlock Text="선택 시료 →" Style="{StaticResource Fh.Label}" Margin="0,0,8,0"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[0]}" CommandParameter="{Binding SelectedItems, ElementName=SquareGrid}"
+                                                            Content="{Binding DataContext.GroupNames[0].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[1]}" CommandParameter="{Binding SelectedItems, ElementName=SquareGrid}"
+                                                            Content="{Binding DataContext.GroupNames[1].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[2]}" CommandParameter="{Binding SelectedItems, ElementName=SquareGrid}"
+                                                            Content="{Binding DataContext.GroupNames[2].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[3]}" CommandParameter="{Binding SelectedItems, ElementName=SquareGrid}"
+                                                            Content="{Binding DataContext.GroupNames[3].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Content="미지정" Style="{StaticResource Fh.Btn.ChipGray}"
+                                                            Command="{Binding UnassignCommand}" CommandParameter="{Binding SelectedItems, ElementName=SquareGrid}"/>
+                                                    <Button Content="★  대표" Style="{StaticResource Fh.Btn.ChipGray}" Margin="0"
+                                                            Command="{Binding SetRepresentativeCommand}" CommandParameter="{Binding SelectedItems, ElementName=SquareGrid}"
+                                                            ToolTip="선택한 시료를 대표 파형 시료로 지정합니다."/>
+                                                </StackPanel>
+                                            </DockPanel>
+
+                                            <!-- 조건 이름 -->
+                                            <Border Grid.Row="2" Background="#F9FAFB" BorderBrush="{StaticResource Fh.Line}" BorderThickness="1"
+                                                    CornerRadius="6" Padding="10,6">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource Fh.Label}" Margin="0,0,12,0">
+                                                        <Run Text="{Binding Slot, Mode=OneWay}" FontWeight="SemiBold"/><Run Text=" 조건"/>
+                                                    </TextBlock>
+                                                    <TextBlock DockPanel.Dock="Right" Text="파일 머리의 amplitude / condition 으로 자동 입력 (주파수는 직접 입력)"
+                                                               Style="{StaticResource Fh.Label}" Margin="12,0,0,0"/>
+                                                    <TextBox Text="{Binding ConditionText, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="예: 30Hz Square 400code  /  5Hz Square 400code"/>
+                                                </DockPanel>
+                                            </Border>
+
+                                            <DataGrid x:Name="SquareGrid" Grid.Row="4" Style="{StaticResource Fh.Grid}" ItemsSource="{Binding Items}"
+                                                      SelectionMode="Extended" SelectionUnit="FullRow" IsReadOnly="True">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="GROUP" Binding="{Binding GroupName}" Width="90">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                <Setter Property="Foreground" Value="#15803D"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding GroupIndex}" Value="-1">
+                                                                        <Setter Property="Foreground" Value="#9CA3AF"/>
+                                                                        <Setter Property="FontWeight" Value="Normal"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="대표" Binding="{Binding RepresentativeMark}" Width="44">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#15803D"/>
+                                                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="*"/>
+                                                    <DataGridTextColumn Header="AXIS" Binding="{Binding Axes}" Width="50"/>
+                                                    <DataGridTextColumn Header="SETTLING UP" Binding="{Binding SettlingUp}" Width="86"/>
+                                                    <DataGridTextColumn Header="SETTLING DN" Binding="{Binding SettlingDown}" Width="86"/>
+                                                    <DataGridTextColumn Header="OVERSHOOT UP" Binding="{Binding OvershootUp}" Width="112"/>
+                                                    <DataGridTextColumn Header="OVERSHOOT DN" Binding="{Binding OvershootDown}" Width="112"/>
+                                                    <DataGridTextColumn Header="UP/DN" Binding="{Binding Kind}" Width="64"/>
+                                                    <DataGridTextColumn Header="JUDGE" Binding="{Binding Judge}" Width="64">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Judge}" Value="NG">
+                                                                        <Setter Property="Foreground" Value="#DC2626"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <TextBlock Grid.Row="5" Text="{Binding Summary}" Style="{StaticResource Fh.Label}" Margin="2,8,0,0" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </TabControl.ContentTemplate>
+                            </TabControl>
+
                             <!-- Settling Time: 그룹 지정 + 조건 체크 + 대표 시료 -->
                             <TabControl Grid.Row="1" ItemsSource="{Binding SettlingAxes}" SelectedItem="{Binding SelectedSettlingAxis}"
                                         Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"
@@ -1005,6 +1127,9 @@
                         <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
                                    Visibility="{Binding IsCircle, Converter={StaticResource BoolToVis}}"
                                    Text="① 메인 창에서 측정 조건별 폴더(6Hz / 10Hz)를 CIRCLE TEST 로 Import → Export   ② 조건 탭(Test1~4)에서 결과 가져오기 · 조건 이름 확인   ③ 그룹 지정 · 대표 시료   ④ 문서에 추가"/>
+                        <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
+                                   Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"
+                                   Text="① 메인 창에서 측정 조건별 폴더(30Hz / 5Hz Square)를 SQUARE TEST 로 Import → Export   ② 조건 탭(Test1~4)에서 결과 가져오기 · 조건 이름 확인   ③ 그룹 지정 · 대표 시료   ④ 문서에 추가 (AKM 은 Up/Down 합산값)"/>
                         <Button Grid.Column="2" Content="문서에 추가" Style="{StaticResource Fh.Btn.Primary}"
                                 Command="{Binding AppendCommand}"/>
                     </Grid>
