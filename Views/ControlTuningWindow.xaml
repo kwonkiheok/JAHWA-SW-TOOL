@@ -345,9 +345,12 @@
         <!-- 문서 (두 탭 공통) -->
         <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16,12">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="20"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -357,7 +360,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- 검사 항목 (세그먼트) -->
-                <Border Grid.Column="0" Background="#F3F4F6" CornerRadius="8" Padding="3">
+                <Border Grid.Row="0" Grid.ColumnSpan="6" HorizontalAlignment="Left" Background="#F3F4F6" CornerRadius="8" Padding="3">
                     <StackPanel Orientation="Horizontal">
                         <Button Content="FRA" Command="{Binding SelectFraCommand}" Tag="{Binding IsFra}" Style="{StaticResource Fh.Segment}"/>
                         <Button Content="DC Sensitivity" Command="{Binding SelectDcCommand}" Tag="{Binding IsDc}" Style="{StaticResource Fh.Segment}"/>
@@ -365,27 +368,30 @@
                         <Button Content="Sine Wave" Command="{Binding SelectSinewaveCommand}" Tag="{Binding IsSinewave}" Style="{StaticResource Fh.Segment}"/>
                         <Button Content="Circle" Command="{Binding SelectCircleCommand}" Tag="{Binding IsCircle}" Style="{StaticResource Fh.Segment}"/>
                         <Button Content="Square" Command="{Binding SelectSquareCommand}" Tag="{Binding IsSquare}" Style="{StaticResource Fh.Segment}"/>
+                        <Button Content="발진" Command="{Binding SelectOscillationCommand}" Tag="{Binding IsOscillation}" Style="{StaticResource Fh.Segment}"/>
                     </StackPanel>
                 </Border>
 
-                <TextBlock Grid.Column="2" Text="문서 파일" Style="{StaticResource Fh.Label}"/>
-                <TextBox Grid.Column="3" Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="문서 파일" Style="{StaticResource Fh.Label}"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="없는 파일이면 새로 만들고, 있는 파일이면 시트 맨 아래에 빌드를 추가합니다. FRA / DC 를 한 파일의 다른 시트에 쌓을 수 있습니다."/>
-                <Button Grid.Column="4" Content="찾아보기" Style="{StaticResource Fh.Btn}" Margin="8,0,0,0"
+                <Button Grid.Row="2" Grid.Column="2" Content="찾아보기" Style="{StaticResource Fh.Btn}" Margin="8,0,0,0"
                         Command="{Binding BrowseOutputCommand}"/>
-                <TextBlock Grid.Column="6" Text="시트" Style="{StaticResource Fh.Label}"/>
+                <TextBlock Grid.Row="2" Grid.Column="4" Text="시트" Style="{StaticResource Fh.Label}"/>
                 <!-- 검사 항목마다 콤보를 따로 둔다 (목록을 바꾸면 선택이 사라지는 문제 방지) -->
-                <ComboBox Grid.Column="7" ItemsSource="{Binding FraSheetOptions}" SelectedItem="{Binding FraSheetName}"
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding FraSheetOptions}" SelectedItem="{Binding FraSheetName}"
                           Visibility="{Binding IsFra, Converter={StaticResource BoolToVis}}"/>
-                <ComboBox Grid.Column="7" ItemsSource="{Binding SinewaveSheetOptions}" SelectedItem="{Binding SinewaveSheetName}"
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding SinewaveSheetOptions}" SelectedItem="{Binding SinewaveSheetName}"
                           Visibility="{Binding IsSinewave, Converter={StaticResource BoolToVis}}"/>
-                <ComboBox Grid.Column="7" ItemsSource="{Binding CircleSheetOptions}" SelectedItem="{Binding CircleSheetName}"
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding CircleSheetOptions}" SelectedItem="{Binding CircleSheetName}"
                           Visibility="{Binding IsCircle, Converter={StaticResource BoolToVis}}"/>
-                <ComboBox Grid.Column="7" ItemsSource="{Binding SquareSheetOptions}" SelectedItem="{Binding SquareSheetName}"
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding SquareSheetOptions}" SelectedItem="{Binding SquareSheetName}"
                           Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"/>
-                <ComboBox Grid.Column="7" ItemsSource="{Binding SettlingSheetOptions}" SelectedItem="{Binding SettlingSheetName}"
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding OscillationSheetOptions}" SelectedItem="{Binding OscillationSheetName}"
+                          Visibility="{Binding IsOscillation, Converter={StaticResource BoolToVis}}"/>
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding SettlingSheetOptions}" SelectedItem="{Binding SettlingSheetName}"
                           Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"/>
-                <ComboBox Grid.Column="7" ItemsSource="{Binding DcSheetOptions}" SelectedItem="{Binding DcSheetName}"
+                <ComboBox Grid.Row="2" Grid.Column="5" ItemsSource="{Binding DcSheetOptions}" SelectedItem="{Binding DcSheetName}"
                           Visibility="{Binding IsDc, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Border>
@@ -485,6 +491,8 @@
                                        Visibility="{Binding IsCircle, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="측정 조건별 시료 · 그룹 · 대표 파형" Style="{StaticResource Fh.SectionTitle}"
                                        Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="0" Text="측정 조건별 파형 사진 · 그룹 · 칸 크기" Style="{StaticResource Fh.SectionTitle}"
+                                       Visibility="{Binding IsOscillation, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="축별 시료 · 그룹 · 조건 · 대표 파형" Style="{StaticResource Fh.SectionTitle}"
                                        Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"/>
                             <TextBlock Grid.Row="0" Text="축별 시료와 대표 파형" Style="{StaticResource Fh.SectionTitle}"
@@ -982,6 +990,113 @@
                                 </TabControl.ContentTemplate>
                             </TabControl>
 
+                            <!-- 발진: 측정 조건 탭(Test1~4) + 조건 이름 + 칸 크기 + 사진 추가 · 그룹 지정 · 순서 -->
+                            <TabControl Grid.Row="1" ItemsSource="{Binding OscillationConditions}" SelectedItem="{Binding SelectedOscillationCondition}"
+                                        Visibility="{Binding IsOscillation, Converter={StaticResource BoolToVis}}"
+                                        BorderThickness="0" Padding="0" Background="Transparent"
+                                        ItemContainerStyle="{StaticResource Fh.AxisTab}">
+                                <TabControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="12"
+                                                   Foreground="{Binding Tag, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+                                    </DataTemplate>
+                                </TabControl.ItemTemplate>
+                                <TabControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="8"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="8"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- 도구 줄 -->
+                                            <DockPanel Grid.Row="0" LastChildFill="False">
+                                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                                    <Button Content="+  사진 추가" Style="{StaticResource Fh.Btn.Accent}"
+                                                            Command="{Binding AddPhotosCommand}"
+                                                            ToolTip="발진 시험 파형 사진(png / jpg / bmp)을 여러 장 골라 이 조건에 추가합니다."/>
+                                                    <Button Content="▲" Style="{StaticResource Fh.Btn}" ToolTip="선택한 사진을 위로 (그룹 안 순서)"
+                                                            Command="{Binding MoveUpCommand}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"/>
+                                                    <Button Content="▼" Style="{StaticResource Fh.Btn}" ToolTip="선택한 사진을 아래로 (그룹 안 순서)"
+                                                            Command="{Binding MoveDownCommand}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"/>
+                                                    <Button Content="삭제" Style="{StaticResource Fh.Btn}"
+                                                            Command="{Binding RemoveCommand}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"/>
+                                                    <Button Content="전체 선택" Style="{StaticResource Fh.Btn}"
+                                                            Command="ApplicationCommands.SelectAll" CommandTarget="{Binding ElementName=OscGrid}"/>
+                                                    <Button Content="비우기" Style="{StaticResource Fh.Btn}" Command="{Binding ClearCommand}"/>
+                                                </StackPanel>
+                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                    <TextBlock Text="선택 시료 →" Style="{StaticResource Fh.Label}" Margin="0,0,8,0"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[0]}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"
+                                                            Content="{Binding DataContext.GroupNames[0].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[1]}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"
+                                                            Content="{Binding DataContext.GroupNames[1].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[2]}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"
+                                                            Content="{Binding DataContext.GroupNames[2].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Style="{StaticResource Fh.Btn.Chip}" Command="{Binding AssignGroupCommands[3]}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"
+                                                            Content="{Binding DataContext.GroupNames[3].Name, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                    <Button Content="미지정" Style="{StaticResource Fh.Btn.ChipGray}"
+                                                            Command="{Binding UnassignCommand}" CommandParameter="{Binding SelectedItems, ElementName=OscGrid}"/>
+                                                </StackPanel>
+                                            </DockPanel>
+
+                                            <!-- 조건 이름 -->
+                                            <Border Grid.Row="2" Background="#F9FAFB" BorderBrush="{StaticResource Fh.Line}" BorderThickness="1"
+                                                    CornerRadius="6" Padding="10,6">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource Fh.Label}" Margin="0,0,12,0">
+                                                        <Run Text="{Binding Slot, Mode=OneWay}" FontWeight="SemiBold"/><Run Text=" 조건"/>
+                                                    </TextBlock>
+                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0"
+                                                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                        <TextBlock Text="한 줄" Style="{StaticResource Fh.Label}" Margin="0,0,6,0"/>
+                                                        <TextBox Width="40" Text="{Binding OscColumns, UpdateSourceTrigger=PropertyChanged}" ToolTip="한 줄에 넣을 사진 수 (1~12, 기본 5)"/>
+                                                        <TextBlock Text="열   칸 크기" Style="{StaticResource Fh.Label}" Margin="6,0,6,0"/>
+                                                        <TextBox Width="44" Text="{Binding OscWidthCm, UpdateSourceTrigger=PropertyChanged}" ToolTip="사진 칸 가로 (cm)"/>
+                                                        <TextBlock Text="×" Style="{StaticResource Fh.Label}" Margin="6,0,6,0"/>
+                                                        <TextBox Width="44" Text="{Binding OscHeightCm, UpdateSourceTrigger=PropertyChanged}" ToolTip="사진 칸 세로 (cm)"/>
+                                                        <TextBlock Text="cm" Style="{StaticResource Fh.Label}" Margin="6,0,10,0"/>
+                                                        <CheckBox Content="비율 유지" IsChecked="{Binding OscKeepAspect}" VerticalAlignment="Center"
+                                                                  ToolTip="켜면 원본 비율을 지켜 가로×세로 칸 안에 맞춥니다. 끄면 칸 크기로 늘립니다."/>
+                                                    </StackPanel>
+                                                    <TextBox Text="{Binding ConditionText, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="예: High Temp 65℃ / 0도 / 두드림 3회"/>
+                                                </DockPanel>
+                                            </Border>
+
+                                            <DataGrid x:Name="OscGrid" Grid.Row="4" Style="{StaticResource Fh.Grid}" ItemsSource="{Binding Items}"
+                                                      SelectionMode="Extended" SelectionUnit="FullRow" IsReadOnly="False"
+                                                      CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="GROUP" Binding="{Binding GroupName}" Width="90" IsReadOnly="True">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                <Setter Property="Foreground" Value="#15803D"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding GroupIndex}" Value="-1">
+                                                                        <Setter Property="Foreground" Value="#9CA3AF"/>
+                                                                        <Setter Property="FontWeight" Value="Normal"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="칸 제목 (더블클릭 수정)" Binding="{Binding Label, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+                                                    <DataGridTextColumn Header="FILE" Binding="{Binding FileName}" Width="*" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="원본 크기 (px)" Binding="{Binding PixelSize}" Width="110" IsReadOnly="True"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <TextBlock Grid.Row="5" Text="{Binding Summary}" Style="{StaticResource Fh.Label}" Margin="2,8,0,0" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </TabControl.ContentTemplate>
+                            </TabControl>
+
                             <!-- Settling Time: 그룹 지정 + 조건 체크 + 대표 시료 -->
                             <TabControl Grid.Row="1" ItemsSource="{Binding SettlingAxes}" SelectedItem="{Binding SelectedSettlingAxis}"
                                         Visibility="{Binding IsSettling, Converter={StaticResource BoolToVis}}"
@@ -1130,6 +1245,9 @@
                         <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
                                    Visibility="{Binding IsSquare, Converter={StaticResource BoolToVis}}"
                                    Text="① 메인 창에서 측정 조건별 폴더(30Hz / 5Hz Square)를 SQUARE TEST 로 Import → Export   ② 조건 탭(Test1~4)에서 결과 가져오기 · 조건 이름 확인   ③ 그룹 지정 · 대표 시료   ④ 문서에 추가 (AKM 은 Up/Down 합산값)"/>
+                        <TextBlock Grid.Column="0" Style="{StaticResource Fh.Label}" TextWrapping="Wrap" LineHeight="18"
+                                   Visibility="{Binding IsOscillation, Converter={StaticResource BoolToVis}}"
+                                   Text="① 조건 탭(Test1~4)에서 조건 이름 · 한 줄 열 수 · 칸 크기(cm) 입력   ② [사진 추가]로 파형 사진 선택   ③ 사진 선택 후 그룹(Cav) 지정 · ▲▼ 순서   ④ 문서에 추가 (그룹마다 새 줄, 칸 제목은 SPL 번호)"/>
                         <Button Grid.Column="2" Content="문서에 추가" Style="{StaticResource Fh.Btn.Primary}"
                                 Command="{Binding AppendCommand}"/>
                     </Grid>

@@ -22,6 +22,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public const string InspectionSinewave = "Sine Wave";
     public const string InspectionCircle = "Circle";
     public const string InspectionSquare = "Square";
+    public const string InspectionOscillation = "발진";
 
     private static readonly Dictionary<string, string[]> DefaultSheetNames = new()
     {
@@ -31,6 +32,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         [InspectionSinewave] = ["OIS Sinewave"],
         [InspectionCircle] = ["OIS Circle"],
         [InspectionSquare] = ["OIS Center Return"],
+        [InspectionOscillation] = ["발진"],
     };
 
     private readonly MainViewModel _main;
@@ -43,6 +45,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         [InspectionSinewave] = "OIS Sinewave",
         [InspectionCircle] = "OIS Circle",
         [InspectionSquare] = "OIS Center Return",
+        [InspectionOscillation] = "발진",
     };
 
     public ControlTuningViewModel(MainViewModel main)
@@ -68,6 +71,9 @@ public sealed class ControlTuningViewModel : ViewModelBase
         for (int i = 1; i <= SquareHistoryWriter.MaxConditions; i++)
             SquareConditions.Add(new SquareConditionViewModel($"Test{i}", this));
         SelectedSquareCondition = SquareConditions[0];
+        for (int i = 1; i <= OscillationHistoryWriter.MaxConditions; i++)
+            OscillationConditions.Add(new OscillationConditionViewModel($"Test{i}", this));
+        SelectedOscillationCondition = OscillationConditions[0];
 
         BrowseOutputCommand = new RelayCommand(BrowseOutput);
         AppendCommand = new RelayCommand(Append);
@@ -78,6 +84,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         SelectSinewaveCommand = new RelayCommand(() => Inspection = InspectionSinewave);
         SelectCircleCommand = new RelayCommand(() => Inspection = InspectionCircle);
         SelectSquareCommand = new RelayCommand(() => Inspection = InspectionSquare);
+        SelectOscillationCommand = new RelayCommand(() => Inspection = InspectionOscillation);
         LoadSettings();
         RefreshSheetOptions();
     }
@@ -99,6 +106,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsSinewave));
             OnPropertyChanged(nameof(IsCircle));
             OnPropertyChanged(nameof(IsSquare));
+            OnPropertyChanged(nameof(IsOscillation));
             OnPropertyChanged(nameof(UsesGroups));
             if (SelectedTabIndex == 1) RefreshBuilds();
         }
@@ -110,14 +118,16 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public bool IsSinewave => Inspection == InspectionSinewave;
     public bool IsCircle => Inspection == InspectionCircle;
     public bool IsSquare => Inspection == InspectionSquare;
-    /// <summary>그룹 이름 입력칸을 쓰는 검사 (FRA, Settling, Sine Wave, Circle, Square).</summary>
-    public bool UsesGroups => IsFra || IsSettling || IsSinewave || IsCircle || IsSquare;
+    public bool IsOscillation => Inspection == InspectionOscillation;
+    /// <summary>그룹 이름 입력칸을 쓰는 검사 (DC 를 뺀 전부).</summary>
+    public bool UsesGroups => IsFra || IsSettling || IsSinewave || IsCircle || IsSquare || IsOscillation;
     public RelayCommand SelectFraCommand { get; }
     public RelayCommand SelectDcCommand { get; }
     public RelayCommand SelectSettlingCommand { get; }
     public RelayCommand SelectSinewaveCommand { get; }
     public RelayCommand SelectCircleCommand { get; }
     public RelayCommand SelectSquareCommand { get; }
+    public RelayCommand SelectOscillationCommand { get; }
 
     // ---- 문서 / 시트 ----
 
@@ -136,6 +146,10 @@ public sealed class ControlTuningViewModel : ViewModelBase
     public string SinewaveSheetName { get => _sheetByInspection[InspectionSinewave]; set => SetSheet(InspectionSinewave, value); }
     public string CircleSheetName { get => _sheetByInspection[InspectionCircle]; set => SetSheet(InspectionCircle, value); }
     public string SquareSheetName { get => _sheetByInspection[InspectionSquare]; set => SetSheet(InspectionSquare, value); }
+    public string OscillationSheetName { get => _sheetByInspection[InspectionOscillation]; set => SetSheet(InspectionOscillation, value); }
+
+    private IReadOnlyList<string> _oscillationSheetOptions = [];
+    public IReadOnlyList<string> OscillationSheetOptions { get => _oscillationSheetOptions; private set { _oscillationSheetOptions = value; OnPropertyChanged(); } }
 
     private IReadOnlyList<string> _squareSheetOptions = [];
     public IReadOnlyList<string> SquareSheetOptions { get => _squareSheetOptions; private set { _squareSheetOptions = value; OnPropertyChanged(); } }
@@ -162,6 +176,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
         InspectionSinewave => nameof(SinewaveSheetName),
         InspectionCircle => nameof(CircleSheetName),
         InspectionSquare => nameof(SquareSheetName),
+        InspectionOscillation => nameof(OscillationSheetName),
         _ => nameof(SettlingSheetName),
     };
 
@@ -197,12 +212,14 @@ public sealed class ControlTuningViewModel : ViewModelBase
         SinewaveSheetOptions = Build(InspectionSinewave);
         CircleSheetOptions = Build(InspectionCircle);
         SquareSheetOptions = Build(InspectionSquare);
+        OscillationSheetOptions = Build(InspectionOscillation);
         OnPropertyChanged(nameof(FraSheetName));
         OnPropertyChanged(nameof(DcSheetName));
         OnPropertyChanged(nameof(SettlingSheetName));
         OnPropertyChanged(nameof(SinewaveSheetName));
         OnPropertyChanged(nameof(CircleSheetName));
         OnPropertyChanged(nameof(SquareSheetName));
+        OnPropertyChanged(nameof(OscillationSheetName));
     }
 
     public RelayCommand BrowseOutputCommand { get; }
@@ -369,6 +386,61 @@ public sealed class ControlTuningViewModel : ViewModelBase
         return tempDir => SquareHistoryWriter.AppendBuild(path, sheet, build, spec, tempDir);
     }
 
+    // ---- 발진 (파형 사진) ----
+
+    public ObservableCollection<OscillationConditionViewModel> OscillationConditions { get; } = new();
+
+    private OscillationConditionViewModel? _selectedOscillationCondition;
+    public OscillationConditionViewModel? SelectedOscillationCondition { get => _selectedOscillationCondition; set { _selectedOscillationCondition = value; OnPropertyChanged(); } }
+
+    // 사진 배치: 한 줄 열 수, 칸 크기(cm), 비율 유지. 마지막 값을 기억한다.
+    private string _oscColumns = "5";
+    public string OscColumns { get => _oscColumns; set { _oscColumns = value; OnPropertyChanged(); } }
+
+    private string _oscWidthCm = "8";
+    public string OscWidthCm { get => _oscWidthCm; set { _oscWidthCm = value; OnPropertyChanged(); } }
+
+    private string _oscHeightCm = "5";
+    public string OscHeightCm { get => _oscHeightCm; set { _oscHeightCm = value; OnPropertyChanged(); } }
+
+    private bool _oscKeepAspect = true;
+    public bool OscKeepAspect { get => _oscKeepAspect; set { _oscKeepAspect = value; OnPropertyChanged(); } }
+
+    /// <summary>발진 빌드를 검사하고, 문서에 쓰는 동작을 돌려준다 (문제가 있으면 null).</summary>
+    private Action<string>? PrepareOscillation()
+    {
+        static double? Num(string s) => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        if (Num(OscColumns) is not double colsD || colsD < 1 || colsD > OscillationHistoryWriter.MaxColumns || colsD != Math.Floor(colsD))
+        {
+            Warn($"한 줄 열 수는 1 ~ {OscillationHistoryWriter.MaxColumns} 사이 정수로 입력하세요.");
+            return null;
+        }
+        if (Num(OscWidthCm) is not double wcm || Num(OscHeightCm) is not double hcm || wcm < 1 || hcm < 1 || wcm > 40 || hcm > 40)
+        {
+            Warn("사진 칸 크기(가로·세로 cm)는 1 ~ 40 사이 숫자로 입력하세요.");
+            return null;
+        }
+        var conds = OscillationConditions.Select(c => c.BuildCondition()).OfType<OscillationCondition>().ToList();
+        if (conds.Count == 0)
+        {
+            Warn("그룹이 지정된 사진이 없습니다.\n조건 탭에서 [사진 추가] 후, 사진을 선택하고 그룹 버튼을 누르세요.");
+            return null;
+        }
+        var missing = conds.SelectMany(c => c.Groups).SelectMany(g => g.Photos).Where(p => !File.Exists(p.Path)).Select(p => Path.GetFileName(p.Path)).ToList();
+        if (missing.Count > 0)
+        {
+            Warn("사진 파일을 찾을 수 없습니다(옮겨졌거나 지워짐):\n" + string.Join("\n", missing.Take(10)));
+            return null;
+        }
+        int unassigned = OscillationConditions.Sum(c => c.Items.Count(i => i.GroupIndex < 0));
+        if (unassigned > 0 && !Confirm($"그룹이 지정되지 않은 사진 {unassigned}장은 문서에서 제외됩니다. 계속할까요?"))
+            return null;
+
+        var build = new OscillationBuild(CurrentHeader, conds, new OscillationLayout((int)colsD, wcm, hcm, OscKeepAspect));
+        var (path, sheet) = (OutputPath, SheetName);
+        return tempDir => OscillationHistoryWriter.AppendBuild(path, sheet, build, tempDir);
+    }
+
     // ---- Settling Time ----
 
     public ObservableCollection<SettlingHistoryAxisViewModel> SettlingAxes { get; } = new();
@@ -453,6 +525,7 @@ public sealed class ControlTuningViewModel : ViewModelBase
             InspectionSinewave => PrepareSinewave(),
             InspectionCircle => PrepareCircle(),
             InspectionSquare => PrepareSquare(),
+            InspectionOscillation => PrepareOscillation(),
             _ => PrepareSettling(),
         };
         if (write is null) return;
@@ -616,6 +689,11 @@ public sealed class ControlTuningViewModel : ViewModelBase
         public string SinewaveSheetName { get; set; } = "";
         public string CircleSheetName { get; set; } = "";
         public string SquareSheetName { get; set; } = "";
+        public string OscillationSheetName { get; set; } = "";
+        public string OscColumns { get; set; } = "";
+        public string OscWidthCm { get; set; } = "";
+        public string OscHeightCm { get; set; } = "";
+        public bool? OscKeepAspect { get; set; }
         public string Maker { get; set; } = "";
         public string Owner { get; set; } = "";
         public List<string> GroupNames { get; set; } = new();
@@ -636,6 +714,11 @@ public sealed class ControlTuningViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(s.SinewaveSheetName)) _sheetByInspection[InspectionSinewave] = s.SinewaveSheetName;
             if (!string.IsNullOrWhiteSpace(s.CircleSheetName)) _sheetByInspection[InspectionCircle] = s.CircleSheetName;
             if (!string.IsNullOrWhiteSpace(s.SquareSheetName)) _sheetByInspection[InspectionSquare] = s.SquareSheetName;
+            if (!string.IsNullOrWhiteSpace(s.OscillationSheetName)) _sheetByInspection[InspectionOscillation] = s.OscillationSheetName;
+            if (!string.IsNullOrWhiteSpace(s.OscColumns)) OscColumns = s.OscColumns;
+            if (!string.IsNullOrWhiteSpace(s.OscWidthCm)) OscWidthCm = s.OscWidthCm;
+            if (!string.IsNullOrWhiteSpace(s.OscHeightCm)) OscHeightCm = s.OscHeightCm;
+            if (s.OscKeepAspect is bool keep) OscKeepAspect = keep;
             if (DefaultSheetNames.ContainsKey(s.Inspection)) _inspection = s.Inspection;
             Maker = s.Maker;
             Owner = s.Owner;
@@ -658,6 +741,8 @@ public sealed class ControlTuningViewModel : ViewModelBase
                 SinewaveSheetName = _sheetByInspection[InspectionSinewave],
                 CircleSheetName = _sheetByInspection[InspectionCircle],
                 SquareSheetName = _sheetByInspection[InspectionSquare],
+                OscillationSheetName = _sheetByInspection[InspectionOscillation],
+                OscColumns = OscColumns, OscWidthCm = OscWidthCm, OscHeightCm = OscHeightCm, OscKeepAspect = OscKeepAspect,
                 Maker = Maker, Owner = Owner,
                 GroupNames = GroupNames.Select(g => g.Name).ToList(),
             };

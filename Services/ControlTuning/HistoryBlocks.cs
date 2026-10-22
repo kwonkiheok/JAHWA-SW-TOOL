@@ -38,7 +38,10 @@ public static class HistoryBlocks
             setupNewSheet(ws);
         }
 
-        int startRow = (ws.LastRowUsed()?.RowNumber() ?? HeadRow) + 2;
+        // 마지막 행이 사진만 있는 행(값 없음)일 수 있으므로(발진), 블록 병합 범위의 끝 행도 함께 본다.
+        int lastUsed = ws.LastRowUsed()?.RowNumber() ?? HeadRow;
+        int lastMerged = ws.MergedRanges.Select(r => r.RangeAddress.LastAddress.RowNumber).DefaultIfEmpty(0).Max();
+        int startRow = Math.Max(lastUsed, lastMerged) + 2;
         if (startRow <= HeadRow + 2) startRow = HeadRow + 1;   // 첫 블록은 머리글 바로 아래부터
         writeBlock(ws, startRow);
 

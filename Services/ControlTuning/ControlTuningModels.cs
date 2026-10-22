@@ -168,3 +168,18 @@ public sealed record SquareHistoryBuild(HistoryHeader Header, IReadOnlyList<Squa
 
 /// <summary>MeasureHub SQUARE Spec. Settling(ms) / |Overshoot|(code) 상한, 넘으면 빨간색. null 이면 비교하지 않는다.</summary>
 public sealed record SquareHistorySpec(double? MaxSettlingMs, double? MaxOvershoot);
+
+// ---------------- 발진 (파형 사진) ----------------
+
+/// <summary>발진 시험 후 저장한 파형 사진 1장. Label 은 칸 제목(기본 "SPL n").</summary>
+public sealed record OscillationPhoto(string Path, string Label);
+
+/// <summary>측정 조건 하나 (예: Test1 / High Temp 65℃). 그룹(Cav1~4)마다 사진 줄이 새로 시작한다.</summary>
+public sealed record OscillationCondition(
+    string Name,
+    IReadOnlyList<(string GroupName, IReadOnlyList<OscillationPhoto> Photos)> Groups);
+
+/// <summary>사진 배치: 한 줄 열 수, 칸 크기(cm), 비율 유지(켜면 가로×세로 상자 안에 원본 비율로 맞춘다).</summary>
+public sealed record OscillationLayout(int Columns, double WidthCm, double HeightCm, bool KeepAspect);
+
+public sealed record OscillationBuild(HistoryHeader Header, IReadOnlyList<OscillationCondition> Conditions, OscillationLayout Layout);
