@@ -575,6 +575,9 @@ public sealed class MainViewModel : ViewModelBase
     public RelayCommand SaveSelectedSettlingImagesCommand { get; }
     // 검사항목 공통: 체크한 파일을 파일당 개별 PNG로 저장
     public RelayCommand SaveSelectedPlotImagesCommand { get; }
+    // 파일 목록 체크박스 전체 선택 / 해제 (지금 목록에 보이는 파일 전부, ALL OVERLAY 가상 항목 제외)
+    public RelayCommand CheckAllPlotFilesCommand { get; }
+    public RelayCommand UncheckAllPlotFilesCommand { get; }
     // DC SENSITIVITY 전용: 체크한 파일 전체를 한 장에 겹쳐 저장
     public RelayCommand SaveSelectedDcOverlayCommand { get; }
     // Control Tuning 작성 창 (모달리스, 하나만 띄운다)
@@ -598,6 +601,8 @@ public sealed class MainViewModel : ViewModelBase
         SaveSelectedSettlingImagesCommand = new RelayCommand(SaveSelectedPlotImages, () => IsSettlingInspection && CanSaveSelectedPlotImages);
         SaveSelectedPlotImagesCommand = new RelayCommand(SaveSelectedPlotImages, () => CanSaveSelectedPlotImages);
         SaveSelectedDcOverlayCommand = new RelayCommand(SaveSelectedDcOverlay, () => CanSaveSelectedDcOverlay);
+        CheckAllPlotFilesCommand = new RelayCommand(() => SetAllPlotFilesChecked(true));
+        UncheckAllPlotFilesCommand = new RelayCommand(() => SetAllPlotFilesChecked(false));
         OpenControlTuningCommand = new RelayCommand(OpenControlTuning);
 
         FraSpec.PropertyChanged += (_, e) =>
@@ -2796,6 +2801,17 @@ public sealed class MainViewModel : ViewModelBase
         wb.SaveAs(path);
     }
 
+
+    /// <summary>
+    /// 파일 목록에 지금 보이는 파일(검색어로 걸러진 목록)의 체크박스를 모두 켜거나 끈다.
+    /// ALL OVERLAY 가상 항목은 저장 대상이 아니므로 건드리지 않는다.
+    /// </summary>
+    private void SetAllPlotFilesChecked(bool isChecked)
+    {
+        foreach (var item in PlotFilesFiltered.Where(x => !x.IsAllOverlayItem))
+            item.IsOverlaySelected = isChecked;
+        RefreshSelectedPlotCommands();
+    }
 
     private void PlotItemOnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

@@ -50,6 +50,19 @@
                                    Foreground="{StaticResource SubTextBrush}"/>
                     </StackPanel>
 
+                    <!-- 파일 목록 체크박스 전체 선택 / 해제 (검사항목 공통, 목록에 보이는 파일 전부) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="전체 선택"
+                                Style="{StaticResource CheckAllButton}"
+                                Command="{Binding CheckAllPlotFilesCommand}"
+                                ToolTip="목록에 보이는 파일을 모두 체크합니다 (검색어로 걸러진 경우 보이는 파일만)."
+                                Margin="0,0,8,0"/>
+                        <Button Content="전체 해제"
+                                Style="{StaticResource UncheckAllButton}"
+                                Command="{Binding UncheckAllPlotFilesCommand}"
+                                ToolTip="목록에 보이는 파일의 체크를 모두 끕니다."/>
+                    </StackPanel>
+
                     <!-- FRA 전용: 체크한 파일을 한 장에 겹쳐 추출 -->
                     <StackPanel Orientation="Horizontal"
                                 Margin="0,8,0,0"
