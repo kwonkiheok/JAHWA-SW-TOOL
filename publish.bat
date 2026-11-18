@@ -3,7 +3,7 @@ chcp 65001 >nul
 REM ─────────────────────────────────────────────────────────────
 REM  팀 배포용 exe 만들기 (자체 포함 단일 파일)
 REM
-REM  결과물 : D:\중점추진과제 SW\workspace\배포\MeasureHub\
+REM  결과물 : workspace\배포\MeasureHub\  (이 bat 기준 ..\..\배포\MeasureHub)
 REM           JahwaMeasureHub.1.0.0.exe  (파일 1개, 약 185MB)
 REM
 REM  파일명의 버전은 MeasureHub.csproj 의 <Version> 값을 따라간다.
@@ -30,6 +30,6 @@ if errorlevel 1 (
 echo [3/3] 완료
 echo.
 echo 결과물 폴더를 엽니다...
-explorer "D:\중점추진과제 SW\workspace\배포\MeasureHub"
+explorer "%~dp0..\..\배포\MeasureHub"
 echo.
 pause
