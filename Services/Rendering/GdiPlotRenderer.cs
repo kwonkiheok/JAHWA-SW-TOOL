@@ -285,8 +285,6 @@ public static class GdiPlotRenderer
         using var labelFont = new System.Drawing.Font("Segoe UI", 11);
         using var legendFont = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold);
         using var textBrush = new System.Drawing.SolidBrush(System.Drawing.Color.Black);
-        using var subTextBrush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(70, 70, 70));
-
         var allX = upX.Concat(downX).Concat(refX).ToList();
         var allY = upY.Concat(downY).Concat(refY).ToList();
         if (allX.Count == 0 || allY.Count == 0)
@@ -295,36 +293,15 @@ public static class GdiPlotRenderer
             return;
         }
 
-        double maxX = allX.Max();
-        double minY = allY.Min();
-        double maxY = allY.Max();
-        double minX = 0;
-        if (maxX <= 0 || double.IsNaN(maxX) || double.IsInfinity(maxX)) maxX = 100;
-        if (Math.Abs(maxY - minY) < 1e-9) { minY -= 1; maxY += 1; }
-
-        if (useThousandYTicks)
-        {
-            minY = 0;
-            if (maxY <= 0 || double.IsNaN(maxY) || double.IsInfinity(maxY))
-                maxY = 100;
-        }
-        else
-        {
-            minY = 0;
-            if (maxY <= 0 || double.IsNaN(maxY) || double.IsInfinity(maxY))
-            {
-                maxY = 100;
-            }
-            else
-            {
-                maxY = Math.Ceiling(maxY / 100.0) * 100.0;
-                if (maxY <= 0)
-                    maxY = 100;
-            }
-        }
-
-        var xTicks = BuildScanXTicks(maxX);
-        var yTicks = useThousandYTicks ? BuildScanXTicks(maxY) : BuildTicksWithinRange(minY, maxY, 6);
+        // 축은 0부터, 끝은 눈금 간격의 배수로 올려 모든 칸이 같은 간격이 되게 한다.
+        // (예전에는 끝값을 그대로 마지막 눈금으로 넣어 800→900 처럼 마지막 칸만 좁았다.)
+        // useThousandYTicks 는 호출부 호환을 위해 남겨 두지만 X/Y 모두 같은 규칙을 쓴다.
+        _ = useThousandYTicks;
+        double minX = 0, minY = 0;
+        var (maxX, xStep) = ScanAxis(allX.Max());
+        var (maxY, yStep) = ScanAxis(allY.Max());
+        var xTicks = EvenTicks(maxX, xStep);
+        var yTicks = EvenTicks(maxY, yStep);
 
         if (!string.IsNullOrWhiteSpace(title))
         {
@@ -353,9 +330,20 @@ public static class GdiPlotRenderer
         }
 
         g.DrawRectangle(axisPen, plotRect);
+        // 축 범위(0 미만 등) 밖 점이 축 바깥에 그려지지 않도록 그래프 영역으로 자른다(마커 반경만큼 여유).
+        var clip = System.Drawing.Rectangle.Inflate(plotRect, 4, 4);
+        g.SetClip(clip);
         DrawSeries(g, refPen, refX, refY, plotRect, minX, maxX, minY, maxY, drawMarkers: false);
         DrawSeries(g, upPen, upX, upY, plotRect, minX, maxX, minY, maxY, drawMarkers: false);
         DrawSeries(g, downPen, downX, downY, plotRect, minX, maxX, minY, maxY, drawMarkers: false);
+        // 측정 점을 모두 표시한다. Up 은 채운 점, Down 은 속이 빈 큰 원이라 같은 자리에 겹쳐도 둘 다 보인다.
+        using (var upBrush = new System.Drawing.SolidBrush(upPen.Color))
+        using (var downMarkPen = new System.Drawing.Pen(downPen.Color, 1.3f))
+        {
+            DrawScanMarkers(g, upX, upY, plotRect, minX, maxX, minY, maxY, upBrush, null, 2.6f);
+            DrawScanMarkers(g, downX, downY, plotRect, minX, maxX, minY, maxY, null, downMarkPen, 4.2f);
+        }
+        g.ResetClip();
 
         var xSize = g.MeasureString(xLabel, labelFont);
         g.DrawString(xLabel, labelFont, textBrush, plotRect.Left + plotRect.Width / 2f - xSize.Width / 2f, plotRect.Bottom + 40);
@@ -371,19 +359,60 @@ public static class GdiPlotRenderer
         g.DrawLine(refPen, lx, ly + 8, lx + 28, ly + 8);
         g.DrawString("Reference", legendFont, textBrush, lx + 36, ly);
         g.DrawLine(upPen, lx, ly + 34, lx + 28, ly + 34);
+        using (var legendUpBrush = new System.Drawing.SolidBrush(upPen.Color))
+            g.FillEllipse(legendUpBrush, lx + 14 - 2.6f, ly + 34 - 2.6f, 5.2f, 5.2f);
         g.DrawString("Up", legendFont, textBrush, lx + 36, ly + 26);
         g.DrawLine(downPen, lx, ly + 60, lx + 28, ly + 60);
+        using (var legendDownPen = new System.Drawing.Pen(downPen.Color, 1.3f))
+            g.DrawEllipse(legendDownPen, lx + 14 - 4.2f, ly + 60 - 4.2f, 8.4f, 8.4f);
         g.DrawString("Down", legendFont, textBrush, lx + 36, ly + 52);
 
-        if (metrics.Count > 0)
-        {
-            float infoY = plotRect.Top + plotRect.Height - 24;
-            string info = string.Join(" | ", metrics.Take(2).Select(m =>
-                $"{DisplayFormat.Range(m.MinInput, m.MaxInput)}  Hys={m.Hys:0.###}, LI={m.Linearity:0.###}"));
-            g.DrawString(info, labelFont, subTextBrush, plotRect.Left + 4, infoY);
-        }
+        // 범위·Hys·LI 글씨는 그래프에 넣지 않는다(값은 Summary CSV/Excel 과 화면 표에 있다).
+        _ = metrics;
 
         bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+    }
+
+    // SCAN 축: 0 부터 시작하고, 칸이 6~10개 정도 되도록 보기 좋은 간격(1·2·5×10ⁿ)을 고른 뒤
+    // 끝값을 그 간격의 배수로 올린다. 그래서 모든 눈금 칸의 간격이 같다. 화면(PlotView)과 PNG가 같이 쓴다.
+    public static (double Max, double Step) ScanAxis(double dataMax)
+    {
+        if (double.IsNaN(dataMax) || double.IsInfinity(dataMax) || dataMax <= 0)
+            return (100, 20);
+        double step = NiceNumber(dataMax / 6.0, true);
+        if (step <= 0 || double.IsNaN(step) || double.IsInfinity(step))
+            step = 1;
+        double max = Math.Ceiling(dataMax / step - 1e-9) * step;
+        if (max <= 0) max = step;
+        return (max, step);
+    }
+
+    private static List<double> EvenTicks(double max, double step)
+    {
+        var ticks = new List<double>();
+        for (int i = 0; i * step <= max + step * 1e-6; i++)
+            ticks.Add(Math.Round(i * step, 10));
+        return ticks;
+    }
+
+    private static void DrawScanMarkers(
+        System.Drawing.Graphics g,
+        IReadOnlyList<double> xs,
+        IReadOnlyList<double> ys,
+        System.Drawing.Rectangle rect,
+        double minX, double maxX, double minY, double maxY,
+        System.Drawing.Brush? fill,
+        System.Drawing.Pen? outline,
+        float radius)
+    {
+        int n = Math.Min(xs.Count, ys.Count);
+        for (int i = 0; i < n; i++)
+        {
+            float x = MapX(xs[i], minX, maxX, rect);
+            float y = MapY(ys[i], minY, maxY, rect);
+            if (fill is not null) g.FillEllipse(fill, x - radius, y - radius, radius * 2, radius * 2);
+            if (outline is not null) g.DrawEllipse(outline, x - radius, y - radius, radius * 2, radius * 2);
+        }
     }
 
     // X축과 Y축을 각각 별도 이미지 한 장씩으로 그린다. Posi(target, 빨강 점선)와 Hall(실제, 파랑 실선)을

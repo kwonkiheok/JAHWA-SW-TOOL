@@ -35,6 +35,72 @@
 
 ## 최근 확인된 작업
 
+- 2026-11-18: 배포 exe 최신화 + 게시 경로를 상대 경로로 변경
+  - 목적: 새 PC 에는 D:\ 가 없어 `publish.bat` / `SingleFile.pubxml` 의 출력 경로(`D:\중점추진과제 SW\workspace\배포\MeasureHub`)가 맞지 않았다.
+  - 수정 파일
+    - `Properties/PublishProfiles/SingleFile.pubxml`: `PublishDir` = `$(MSBuildProjectDirectory)\..\..\배포\MeasureHub\` (workspace\배포\MeasureHub).
+    - `publish.bat`: 안내 주석과 마지막 `explorer` 경로를 `%~dp0..\..\배포\MeasureHub` 로.
+  - 검증: `dotnet msbuild -getProperty:PublishDir` 가 workspace\배포\MeasureHub\ 로 해석됨. 같은 날 Release 단일 파일로 다시 게시해 배포 폴더 exe·zip 교체, 새 exe 실행 확인(버전은 1.0.0 유지).
+  - 남은 작업: 버전 번호를 올릴지 결정(현재 파일명만으로는 11/06 배포본과 구분 안 됨).
+
+- 2026-11-09: SCAN 그래프(Export PNG·화면) 측정 점 표시, 지표 글씨 제거, 축 눈금 균등화
+  - 사용자 요청
+    - 그래프에 측정 점을 모두 표시한다.
+    - 그래프 아래쪽 안에 쓰던 "범위 Hys=… LI=…" 글씨를 지운다(값은 Summary CSV/Excel·화면 표에 그대로 있다).
+    - 눈금 칸 간격을 균등하게 한다. 예전에는 끝값을 마지막 눈금으로 그대로 넣어 "800→900" 처럼 마지막 칸만 좁았다(X 도 4000→4080 처럼 끝 칸이 짧았다).
+  - 수정 파일
+    - `Services/Rendering/GdiPlotRenderer.cs` `SaveScanPlotPng`
+      - 새 공용 함수 `ScanAxis(dataMax)`: 0부터, 칸이 6~10개 되게 1·2·5×10ⁿ 간격을 고르고 끝을 간격의 배수로 올린다(AKM 0~4080 → 0~4500/500, Robocube Target 0~16380 → 0~18000/2000, LaserDis 1922 → 0~2000/500).
+      - AKM 전용 1000 간격 규칙(`useThousandYTicks`)은 쓰지 않는다. 인자는 호출부 호환을 위해 남겼다.
+      - 점 표시: Up 은 채운 점(주황), Down 은 속 빈 큰 원(파랑)이라 같은 자리에 겹쳐도 둘 다 보인다. 범례에도 점 모양을 넣었다.
+      - 그래프 영역으로 클리핑해 0 미만 값(Robocube LaserDis -1.2 등)이 축 밖에 그려지지 않게 했다.
+    - `Views/PlotView.xaml.cs` `RefreshScanPlot`: 화면도 같은 `ScanAxis` 와 `NumericFixedInterval` 눈금을 쓰고, 선택 파일이 없어도 점을 항상 표시한다. 쓰지 않게 된 축·눈금 헬퍼 5개를 지웠다.
+  - 계산(Hys/LI)·판정·CSV/Excel 내용은 변경 없음.
+  - 검증
+    - 빌드 오류 0.
+    - 앱 코드를 그대로 호출하는 임시 콘솔(스크래치)로 AKM 1개·Robocube 5개 PNG 를 다시 그려 눈금 균등, 점 표시, 글씨 제거를 눈으로 확인했다.
+    - 앱 화면 그래프는 직접 실행해 보지 않았다(사용자 확인 필요).
+  - 남은 작업
+    - 범례가 오른쪽 위에 있어 곡선 끝과 겹친다(AKM, Robocube). 위치 조정 검토.
+    - Up/Down/Reference 차이가 수 code 라 전체 축에서는 구분이 안 된다. 편차(Up−Ref, Down−Ref) 그래프 추가 검토.
+
+- 2026-10-22: FRA 그래프 확대·이동을 처음 화면 범위 안으로 제한
+  - 사용자 요청. 마우스로 축소·이동하면 데이터가 없는 빈 영역으로 벗어났다. 처음 화면 범위(주파수 전체, Gain ±60dB, Phase ±180deg) 안에서만 확대·이동되게 했다. FRA 한정이다.
+  - 수정 파일: `Views/PlotView.xaml.cs`
+    - `RefreshFraPlot` 에서 ScottPlot `AxisRules.MaximumBoundary` 를 아래쪽+왼쪽(Gain) 축과 아래쪽+오른쪽(Phase) 축에 하나씩 건다.
+    - `RefreshPlot` 의 `Plot.Clear()` 때 `Axes.Rules.Clear()` 로 지우므로 다른 검사 그래프에는 남지 않는다.
+  - 검증
+    - 빌드 오류 0.
+    - 같은 규칙을 건 그래프로 동작을 흉내 냈다.
+      - 4배 축소를 시도하면 처음 범위 그대로다.
+      - 4배 확대는 된다(X 2.13~2.88, Gain ±15).
+      - 오른쪽 밖으로 이동(3.5~4.5)하면 3~4 로 끝에 붙고 폭은 유지된다.
+      - Gain 위로 이동(40~100)하면 0~60 이 된다.
+    - 앱에서 실제 마우스 휠·드래그 확인은 FRA 데이터 Import → Export 가 필요해 하지 못했다(사용자 확인 필요).
+
+- 2026-10-22: FRA 그래프에 마우스 위치 세로선 추가
+  - 사용자 요청. FRA 화면 그래프에 마우스를 올리면 그 주파수 위치에 세로 점선을 그린다. 다른 검사 그래프는 바꾸지 않았다(사용자 결정: FRA 만).
+  - 값은 기존처럼 그래프 아래 라벨(Freq / Gain / Phase, 선택 파일 기준)에 나온다. 세로선은 선택 파일이 없어도 마우스 위치에 그린다.
+  - 수정 파일: `Views/PlotView.xaml.cs`
+    - `_fraHoverLine`: ScottPlot VerticalLine, 검정 55% 투명도, 1px 점선
+    - `RefreshFraPlot` 에서 매번 새로 만든다(`Plot.Clear()` 로 지워지므로).
+    - `WpfPlotOnMouseMove` 에서 위치를 옮기고, 그래프 밖이나 `MouseLeave` 에서는 숨긴다.
+    - `SetFraHoverLine` 은 위치나 표시 상태가 바뀔 때만 다시 그린다.
+  - 검증
+    - 빌드 오류 0.
+    - 같은 설정(색·굵기·점선)으로 FRA 샘플(`C10942_PRO_EVT1.1_OP_170_L_SPL1`)을 그려 100Hz 위치 세로선이 보이는 것을 확인했다.
+    - 앱에서 실제 마우스로 움직여 보는 확인은 FRA 데이터를 Import → Export 해야 해서 하지 못했다(사용자 확인 필요).
+
+- 2026-10-22: 파일 목록에 체크박스 [전체 선택] / [전체 해제] 버튼 추가 (검사항목 공통)
+  - 사용자 요청. 이전에는 파일 목록 체크박스를 하나씩만 켤 수 있었다. 그래서 '선택 파일 이미지 저장' 이나 FRA·DC 오버레이에서 모든 파일을 고르기 번거로웠다.
+  - 수정 파일
+    - `Views/PlotView.xaml`: '선택 파일 이미지 저장' 아래에 버튼 2개를 추가했다.
+    - `App.xaml`: 버튼 스타일 `CheckAllButton`(연한 파랑 #DBEAFE / 글씨 #1E40AF), `UncheckAllButton`(연한 회색 #E2E8F0 / 글씨 #334155)을 추가했다. 파스텔 톤에 굵은 13pt 글씨이고, 두 버튼 폭 합이 위 '선택 파일 이미지 저장'(162) 과 같다.
+      - 앱 공통 TextBlock 스타일이 버튼 글씨 색을 덮어써서, 템플릿 안에서 글씨 색을 직접 지정했다.
+    - `ViewModels/MainViewModel.cs`: `CheckAllPlotFilesCommand` / `UncheckAllPlotFilesCommand` 와 `SetAllPlotFilesChecked` 를 추가했다.
+  - 대상: 지금 목록에 보이는 파일 전부(검색어로 걸렀으면 보이는 파일만). ALL OVERLAY 가상 항목은 제외한다. '개 선택' 수와 저장 버튼 활성 상태도 바로 갱신된다.
+  - 검증: 빌드 오류 0. 파일 목록은 Import → Export 뒤에만 보이는데, Import 폴더 대화상자를 자동화로 조작할 수 없어 앱에서 버튼 동작은 확인하지 못했다(사용자 확인 필요).
+
 - 2026-10-22: Control Tuning 작성에 발진(파형 사진) 추가 (브랜치 `feature/template-report`)
   - 목적: 발진 시험 후 측정 장비에서 저장한 파형 사진을 양식 `Test_발진` 처럼 격자로 문서에 넣는다. 계산은 하지 않는다.
   - 사용자 결정

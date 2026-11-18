@@ -19,6 +19,9 @@ public partial class PlotView : System.Windows.Controls.UserControl
     private double[]? _selectedFraFrequency;
     private double[]? _selectedFraGain;
     private double[]? _selectedFraPhaseRaw;
+    // FRA 그래프에 마우스를 올리면 그 주파수 위치에 세로선을 그린다(값은 아래 Freq/Gain/Phase 라벨).
+    // Plot.Clear() 때 함께 지워지므로 RefreshFraPlot 에서 매번 새로 만든다.
+    private ScottPlot.Plottables.VerticalLine? _fraHoverLine;
 
     public PlotView()
     {
@@ -160,6 +163,8 @@ public partial class PlotView : System.Windows.Controls.UserControl
         }
 
         _wpfPlot.Plot.Clear();
+        _wpfPlot.Plot.Axes.Rules.Clear();   // FRA 의 확대 범위 제한은 FRA 를 그릴 때만 다시 건다
+        _fraHoverLine = null;
         _configured = false;
 
         if (_vm.IsDcSensitivityInspection)
@@ -224,6 +229,12 @@ public partial class PlotView : System.Windows.Controls.UserControl
         _wpfPlot.Plot.Axes.SetLimits(minX, maxX, -60, 60);
         ApplyLogTicks(_wpfPlot.Plot);
 
+        // 처음 화면(주파수 전체 · Gain ±60dB · Phase ±180deg) 바깥으로는 축소·이동하지 못하게 한다.
+        // 그 안에서는 확대·이동이 자유롭다. (FRA 한정, 사용자 요청)
+        var plt = _wpfPlot.Plot;
+        plt.Axes.Rules.Add(new ScottPlot.AxisRules.MaximumBoundary(plt.Axes.Bottom, plt.Axes.Left, new AxisLimits(minX, maxX, -60, 60)));
+        plt.Axes.Rules.Add(new ScottPlot.AxisRules.MaximumBoundary(plt.Axes.Bottom, plt.Axes.Right, new AxisLimits(minX, maxX, -180, 180)));
+
         var active = _vm.ActivePlotFile;
         UpdateSelectedFraHoverCache(active);
         if (active is null)
@@ -254,7 +265,26 @@ public partial class PlotView : System.Windows.Controls.UserControl
             phase.Axes.YAxis = _wpfPlot.Plot.Axes.Right;
         }
 
+        // 마우스 위치 세로선 (처음엔 숨김, MouseMove 에서 위치를 옮기고 보인다)
+        _fraHoverLine = _wpfPlot.Plot.Add.VerticalLine(minX);
+        _fraHoverLine.Color = Colors.Black.WithOpacity(0.55);
+        _fraHoverLine.LineWidth = 1;
+        _fraHoverLine.LinePattern = LinePattern.Dashed;
+        _fraHoverLine.IsVisible = false;
+
         _wpfPlot.Plot.Legend.IsVisible = false;
+    }
+
+    /// <summary>FRA 세로선을 logFrequency 위치에 보이거나(null 이면 숨김) 바뀐 경우에만 다시 그린다.</summary>
+    private void SetFraHoverLine(double? logFrequency)
+    {
+        if (_wpfPlot is null || _fraHoverLine is null) return;
+        bool visible = logFrequency.HasValue;
+        if (visible == _fraHoverLine.IsVisible && (!visible || _fraHoverLine.X == logFrequency!.Value))
+            return;
+        _fraHoverLine.IsVisible = visible;
+        if (visible) _fraHoverLine.X = logFrequency!.Value;
+        _wpfPlot.Refresh();
     }
 
     private void RefreshDcPlot()
@@ -353,27 +383,12 @@ public partial class PlotView : System.Windows.Controls.UserControl
         if (allX.Count == 0 || allY.Count == 0)
             return;
 
-        var maxX = allX.Max();
-        var minY = allY.Min();
-        var maxY = allY.Max();
-        var (scanXMin, scanXMax) = GetScanXRange(maxX);
-        var useThousandYTicks = IsAkmScanDataType();
-        var (scanYMin, scanYMax) = useThousandYTicks ? GetScanXRange(maxY) : GetScanYRangeFromZero(maxY, 100);
-        plt.Axes.SetLimits(scanXMin, scanXMax, scanYMin, scanYMax);
-
-        plt.Axes.Bottom.TickGenerator = new NumericAutomatic
-        {
-            IntegerTicksOnly = true,
-            LabelFormatter = x => FormatScanXTickLabel(x, scanXMax)
-        };
-
-        plt.Axes.Left.TickGenerator = new NumericAutomatic
-        {
-            IntegerTicksOnly = true,
-            LabelFormatter = useThousandYTicks
-                ? y => FormatScan1000TickLabel(y, scanYMax)
-                : y => y.ToString("0")
-        };
+        // PNG(GdiPlotRenderer.SaveScanPlotPng)와 같은 축 규칙: 0부터, 끝을 눈금 간격의 배수로 올려 칸 간격을 모두 같게.
+        var (scanXMax, scanXStep) = GdiPlotRenderer.ScanAxis(allX.Max());
+        var (scanYMax, scanYStep) = GdiPlotRenderer.ScanAxis(allY.Max());
+        plt.Axes.SetLimits(0, scanXMax, 0, scanYMax);
+        plt.Axes.Bottom.TickGenerator = new NumericFixedInterval(scanXStep);
+        plt.Axes.Left.TickGenerator = new NumericFixedInterval(scanYStep);
 
         int idx = 0;
         foreach (var item in items)
@@ -382,7 +397,8 @@ public partial class PlotView : System.Windows.Controls.UserControl
             bool hasActive = active is not null;
             double lineWidth = isSelected ? 1.25 : 0.75;
             double alpha = hasActive ? (isSelected ? 0.98 : 0.16) : 0.55;
-            float markerSize = selected is null ? 0 : 2.4f;
+            // 측정 점은 항상 표시한다(선택 파일이 없을 때도).
+            float markerSize = isSelected ? 4f : 2.4f;
 
             if (item.ScanRefInput.Count > 1)
             {
@@ -683,45 +699,6 @@ public partial class PlotView : System.Windows.Controls.UserControl
         plt.Legend.IsVisible = true;
     }
 
-    private static (double min, double max) GetScanXRange(double max)
-    {
-        if (double.IsNaN(max) || double.IsInfinity(max) || max <= 0)
-            return (0, 100);
-
-        return (0, max);
-    }
-
-    private static (double min, double max) GetScanYRangeFromZero(double max, double unit)
-    {
-        if (double.IsNaN(max) || double.IsInfinity(max) || max <= 0 || unit <= 0)
-            return (0, 100);
-
-        double roundedMax = Math.Ceiling(max / unit) * unit;
-        if (roundedMax <= 0)
-            roundedMax = unit;
-
-        return (0, roundedMax);
-    }
-
-    private bool IsAkmScanDataType()
-        => string.Equals(_vm?.ScanSpec.SelectedDataType, "AKM", StringComparison.OrdinalIgnoreCase);
-
-    private static string FormatScanXTickLabel(double value, double max)
-        => FormatScan1000TickLabel(value, max);
-
-    private static string FormatScan1000TickLabel(double value, double max)
-    {
-        double rounded = Math.Round(value);
-        if (Math.Abs(value - rounded) > 1e-6)
-            return "";
-        if (rounded < -1e-6 || rounded > max + 1e-6)
-            return "";
-        if (Math.Abs(rounded % 1000) > 1e-6)
-            return "";
-
-        return rounded.ToString("0");
-    }
-
     private static (double min, double max) GetScanTightRange(double min, double max, double unit)
     {
         if (double.IsNaN(min) || double.IsNaN(max) || double.IsInfinity(min) || double.IsInfinity(max) || unit <= 0)
@@ -968,12 +945,14 @@ public partial class PlotView : System.Windows.Controls.UserControl
         if (mouse.X < 0 || mouse.Y < 0 || mouse.X > _wpfPlot.ActualWidth || mouse.Y > _wpfPlot.ActualHeight)
         {
             _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            SetFraHoverLine(null);
             return;
         }
 
         if (!_fraMinLogX.HasValue || !_fraMaxLogX.HasValue || _wpfPlot.ActualWidth <= 0)
         {
             _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            SetFraHoverLine(null);
             return;
         }
 
@@ -985,9 +964,12 @@ public partial class PlotView : System.Windows.Controls.UserControl
         if (double.IsNaN(logFrequency) || double.IsInfinity(logFrequency))
         {
             _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+            SetFraHoverLine(null);
             return;
         }
         logFrequency = Math.Clamp(logFrequency, _fraMinLogX.Value, _fraMaxLogX.Value);
+        // 세로선은 선택 파일이 없어도 마우스 주파수 위치에 그린다(값 라벨은 선택 파일이 있을 때만).
+        SetFraHoverLine(logFrequency);
 
         if (!TryGetSelectedFraHoverValues(logFrequency, out double frequencyHz, out double gainDb, out double phaseDeg))
         {
@@ -1002,6 +984,7 @@ public partial class PlotView : System.Windows.Controls.UserControl
     {
         if (_vm is not null)
             _vm.FraHoverFrequencyLabel = MainViewModel.FraHoverInfoEmpty;
+        SetFraHoverLine(null);
     }
 
     private static void ApplyLogTicks(ScottPlot.Plot plot)
